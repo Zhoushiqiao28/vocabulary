@@ -6,7 +6,7 @@ import '../theme/app_theme.dart';
 import 'card_learning_screen.dart';
 import 'quiz_test_screen.dart';
 import 'spelling_test_screen.dart';
-import 'chat_selection_screen.dart';
+import 'chat_test_screen.dart';
 import 'settings_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -81,12 +81,12 @@ class DashboardScreen extends ConsumerWidget {
                     _buildSubActionCard(
                       context: context,
                       title: 'AIチャット対話テスト',
-                      description: '覚えた単語を使ってAIと自然な英会話',
+                      description: '苦手な単語や今日の学習単語をAIが自動で会話に組み込み',
                       icon: Icons.chat_bubble_rounded,
                       color: AppTheme.primary,
                       onTap: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(builder: (context) => const ChatSelectionScreen()),
+                          MaterialPageRoute(builder: (context) => const ChatTestScreen()),
                         );
                       },
                     ),

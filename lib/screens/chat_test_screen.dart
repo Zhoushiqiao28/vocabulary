@@ -7,9 +7,7 @@ import '../providers/providers.dart';
 import '../theme/app_theme.dart';
 
 class ChatTestScreen extends ConsumerStatefulWidget {
-  final Word targetWord;
-
-  const ChatTestScreen({super.key, required this.targetWord});
+  const ChatTestScreen({super.key});
 
   @override
   ConsumerState<ChatTestScreen> createState() => _ChatTestScreenState();
@@ -21,6 +19,54 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
   bool _isSending = false;
   
   final Set<int> _expandedCorrectionIndices = {};
+  List<Word> _targetWords = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectTargetWords();
+  }
+
+  void _selectTargetWords() {
+    final allWords = ref.read(wordListProvider);
+    if (allWords.isEmpty) return;
+
+    final weakWords = allWords.where((w) => w.status == 2).toList()..shuffle();
+    
+    final today = DateTime.now();
+    final todayWords = allWords.where((w) {
+      if (w.reviewedAt == null) return false;
+      return w.reviewedAt!.year == today.year &&
+             w.reviewedAt!.month == today.month &&
+             w.reviewedAt!.day == today.day;
+    }).toList()..shuffle();
+    
+    final unlearnedWords = allWords.where((w) => w.status == 0).toList()..shuffle();
+    final learnedWords = allWords.where((w) => w.status == 1).toList()..shuffle();
+
+    final selected = <Word>{};
+
+    selected.addAll(weakWords.take(3));
+    selected.addAll(todayWords.take(3));
+    selected.addAll(unlearnedWords.take(2));
+    selected.addAll(learnedWords.take(2));
+
+    if (selected.length < 5) {
+      final remaining = List<Word>.from(allWords)..shuffle();
+      for (final w in remaining) {
+        if (selected.length >= 5) break;
+        selected.add(w);
+      }
+    }
+
+    _targetWords = selected.toList();
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(aiVocaChatProvider.notifier).setTargetWords(_targetWords);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -52,7 +98,7 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
     _scrollToBottom();
 
     try {
-      final chatNotifier = ref.read(chatProviderFamily(widget.targetWord.spelling).notifier);
+      final chatNotifier = ref.read(aiVocaChatProvider.notifier);
       await chatNotifier.sendMessage(text);
     } catch (e) {
       if (mounted) {
@@ -72,12 +118,12 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final chatHistory = ref.watch(chatProviderFamily(widget.targetWord.spelling));
+    final chatHistory = ref.watch(aiVocaChatProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '💬 AI対話テスト: ${widget.targetWord.spelling}',
+          '💬 AI特訓チャット',
           style: GoogleFonts.outfit(fontSize: 16),
         ),
         actions: [
@@ -85,7 +131,7 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
             icon: const Icon(Icons.delete_sweep_rounded),
             tooltip: '会話履歴をクリア',
             onPressed: () {
-              ref.read(chatProviderFamily(widget.targetWord.spelling).notifier).clearHistory();
+              ref.read(aiVocaChatProvider.notifier).clearHistory();
             },
           )
         ],
@@ -123,32 +169,115 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
   }
 
   Widget _buildTargetWordHeader() {
+    if (_targetWords.isEmpty) return const SizedBox.shrink();
+
+    final today = DateTime.now();
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      color: AppTheme.surface,
-      child: Row(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.lightbulb_rounded, color: AppTheme.secondary, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
-                children: [
-                  const TextSpan(text: '文中に '),
-                  TextSpan(
-                    text: widget.targetWord.spelling,
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.secondary,
-                    ),
-                  ),
-                  TextSpan(text: '（${widget.targetWord.meaningJa}）を含めて発言してください。'),
-                ],
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome_rounded, color: AppTheme.secondary, size: 14),
+              const SizedBox(width: 6),
+              Text(
+                '今日の暗記ターゲット単語（会話で使ってみましょう）',
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textSecondary,
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _targetWords.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final word = _targetWords[index];
+                
+                Color badgeBg = Colors.white10;
+                Color textColor = AppTheme.textPrimary;
+                String label = '';
+
+                if (word.status == 2) {
+                  badgeBg = Colors.redAccent.withOpacity(0.12);
+                  textColor = Colors.redAccent;
+                  label = '苦手';
+                } else if (word.reviewedAt != null && 
+                           word.reviewedAt!.year == today.year &&
+                           word.reviewedAt!.month == today.month &&
+                           word.reviewedAt!.day == today.day) {
+                  badgeBg = Colors.teal.withOpacity(0.12);
+                  textColor = Colors.tealAccent;
+                  label = '今日学習';
+                } else if (word.status == 0) {
+                  badgeBg = AppTheme.primary.withOpacity(0.15);
+                  textColor = AppTheme.secondary;
+                  label = '未習得';
+                } else {
+                  badgeBg = Colors.orangeAccent.withOpacity(0.12);
+                  textColor = Colors.orangeAccent;
+                  label = '復習';
+                }
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: textColor.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        word.spelling,
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '(${word.meaningJa})',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: textColor.withOpacity(0.8),
+                        ),
+                      ),
+                      if (label.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: textColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            label,
+                            style: TextStyle(color: textColor, fontSize: 8, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ]
+                    ],
+                  ),
+                );
+              },
             ),
-          )
+          ),
         ],
       ),
     );

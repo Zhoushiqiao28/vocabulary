@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
+import 'dart:async';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../theme/app_theme.dart';
@@ -25,10 +27,23 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
   int _score = 0;
   List<Word> _wrongWords = [];
 
+  final FocusNode _keyboardFocusNode = FocusNode();
+  Timer? _transitionTimer;
+
   @override
   void initState() {
     super.initState();
     _generateQuiz();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _keyboardFocusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _keyboardFocusNode.dispose();
+    _transitionTimer?.cancel();
+    super.dispose();
   }
 
   void _generateQuiz() {
@@ -71,6 +86,12 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
       _selectedOption = null;
       _hasAnswered = false;
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _keyboardFocusNode.requestFocus();
+      }
+    });
   }
 
   void _answer(String option) {
@@ -92,9 +113,16 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
         ref.read(wordListProvider.notifier).updateWordStatus(targetWord.id, 2);
       }
     });
+
+    _transitionTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        _nextQuestion();
+      }
+    });
   }
 
   void _nextQuestion() {
+    _transitionTimer?.cancel();
     if (_currentIndex + 1 < _quizWords.length) {
       setState(() {
         _currentIndex++;
@@ -136,126 +164,137 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
 
     final targetWord = _quizWords[_currentIndex];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('択一クイズ (${_currentIndex + 1}/${_quizWords.length})'),
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          onPressed: () => Navigator.pop(context),
+    return KeyboardListener(
+      focusNode: _keyboardFocusNode,
+      autofocus: true,
+      onKeyEvent: (KeyEvent event) {
+        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+          if (_hasAnswered) {
+            _nextQuestion();
+          }
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('択一クイズ (${_currentIndex + 1}/${_quizWords.length})'),
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              LinearProgressIndicator(
-                value: (_currentIndex + 1) / _quizWords.length,
-                backgroundColor: Colors.white12,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                minHeight: 6,
-                borderRadius: BorderRadius.circular(3),
-              ),
-              const SizedBox(height: 48),
-
-              Expanded(
-                flex: 2,
-                child: Container(
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white.withOpacity(0.05)),
-                  ),
-                  child: Text(
-                    targetWord.spelling,
-                    style: GoogleFonts.outfit(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                LinearProgressIndicator(
+                  value: (_currentIndex + 1) / _quizWords.length,
+                  backgroundColor: Colors.white12,
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(3),
                 ),
-              ),
-              const SizedBox(height: 32),
-
-              Expanded(
-                flex: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: _currentOptions.map((option) {
-                    final isSelected = _selectedOption == option;
-                    final isCorrectOption = option == targetWord.meaningJa;
-                    
-                    Color cardColor = AppTheme.surface;
-                    Color borderColor = Colors.white.withOpacity(0.05);
-                    Color textColor = AppTheme.textPrimary;
-
-                    if (_hasAnswered) {
-                      if (isCorrectOption) {
-                        cardColor = Colors.teal.withOpacity(0.12);
-                        borderColor = Colors.teal;
-                        textColor = Colors.tealAccent;
-                      } else if (isSelected) {
-                        cardColor = Colors.redAccent.withOpacity(0.12);
-                        borderColor = Colors.redAccent;
-                        textColor = Colors.redAccent;
-                      }
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: InkWell(
-                        onTap: () => _answer(option),
-                        borderRadius: BorderRadius.circular(16),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-                          decoration: BoxDecoration(
-                            color: cardColor,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: borderColor, width: 1.5),
-                          ),
-                          child: Text(
-                            option,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: textColor,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-
-              if (_hasAnswered)
-                SizedBox(
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _nextQuestion,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                const SizedBox(height: 48),
+  
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white.withOpacity(0.05)),
                     ),
                     child: Text(
-                      _currentIndex + 1 == _quizWords.length ? '結果を確認' : '次へ進む',
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+                      targetWord.spelling,
+                      style: GoogleFonts.outfit(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                )
-              else
-                const SizedBox(height: 56),
-            ],
+                ),
+                const SizedBox(height: 32),
+  
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: _currentOptions.map((option) {
+                      final isSelected = _selectedOption == option;
+                      final isCorrectOption = option == targetWord.meaningJa;
+                      
+                      Color cardColor = AppTheme.surface;
+                      Color borderColor = Colors.white.withOpacity(0.05);
+                      Color textColor = AppTheme.textPrimary;
+  
+                      if (_hasAnswered) {
+                        if (isCorrectOption) {
+                          cardColor = Colors.teal.withOpacity(0.12);
+                          borderColor = Colors.teal;
+                          textColor = Colors.tealAccent;
+                        } else if (isSelected) {
+                          cardColor = Colors.redAccent.withOpacity(0.12);
+                          borderColor = Colors.redAccent;
+                          textColor = Colors.redAccent;
+                        }
+                      }
+  
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: InkWell(
+                          onTap: () => _answer(option),
+                          borderRadius: BorderRadius.circular(16),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: borderColor, width: 1.5),
+                            ),
+                            child: Text(
+                              option,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: textColor,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+  
+                if (_hasAnswered)
+                  SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _nextQuestion,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        _currentIndex + 1 == _quizWords.length ? '結果を確認' : '次へ進む',
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                  )
+                else
+                  const SizedBox(height: 56),
+              ],
+            ),
           ),
         ),
       ),

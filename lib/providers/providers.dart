@@ -128,23 +128,29 @@ final wordListProvider = StateNotifierProvider<WordListNotifier, List<Word>>((re
 class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   final StorageService _storage;
   final GeminiService _gemini;
-  final String _wordSpelling;
+  List<Word> _targetWords = [];
 
-  ChatNotifier(this._storage, this._gemini, this._wordSpelling) : super([]) {
+  ChatNotifier(this._storage, this._gemini) : super([]) {
     _loadHistory();
   }
 
+  List<Word> get targetWords => _targetWords;
+
+  void setTargetWords(List<Word> words) {
+    _targetWords = words;
+  }
+
   void _loadHistory() {
-    state = _storage.getChatHistory(_wordSpelling);
+    state = _storage.getChatHistory("ai_voca_chat");
   }
 
   Future<void> sendMessage(String text) async {
     final userMsg = ChatMessage(role: 'user', text: text, sentAt: DateTime.now());
     state = [...state, userMsg];
-    await _storage.saveChatHistory(_wordSpelling, state);
+    await _storage.saveChatHistory("ai_voca_chat", state);
 
-    // Call Gemini API for response and correction
-    final response = await _gemini.sendChatMessage(state, text, _wordSpelling);
+    // Call Gemini API for response and correction, passing target words
+    final response = await _gemini.sendChatMessage(state, text, _targetWords);
 
     final aiMsg = ChatMessage(
       role: 'model',
@@ -156,18 +162,18 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     );
 
     state = [...state, aiMsg];
-    await _storage.saveChatHistory(_wordSpelling, state);
+    await _storage.saveChatHistory("ai_voca_chat", state);
   }
 
   Future<void> clearHistory() async {
     state = [];
-    await _storage.saveChatHistory(_wordSpelling, []);
+    await _storage.saveChatHistory("ai_voca_chat", []);
   }
 }
 
-// Family provider to instantiate ChatNotifier for specific words
-final chatProviderFamily = StateNotifierProvider.family<ChatNotifier, List<ChatMessage>, String>((ref, wordSpelling) {
+// Global provider for AI Voca Chat
+final aiVocaChatProvider = StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref) {
   final storage = ref.watch(storageServiceProvider);
   final gemini = ref.watch(geminiServiceProvider);
-  return ChatNotifier(storage, gemini, wordSpelling);
+  return ChatNotifier(storage, gemini);
 });

@@ -87,10 +87,16 @@ Keep it concise and beautiful for a mobile app card detail. Do not return JSON, 
 
   // 3. Send Chat Message & Correction
   Future<Map<String, dynamic>> sendChatMessage(
-      List<ChatMessage> history, String userMsg, String targetWord) async {
+      List<ChatMessage> history, String userMsg, List<Word> targetWords) async {
+    final targetWordsInfo = targetWords.map((w) {
+      final statusStr = w.status == 2 ? '覚えてない(苦手)' : (w.status == 0 ? '未学習' : '要復習');
+      return '- ${w.spelling} (意味: ${w.meaningJa}, 優先度: $statusStr)';
+    }).join('\n');
+
     if (!isAvailable) {
+      final wordSpellingList = targetWords.map((e) => e.spelling).join(', ');
       return {
-        'ai_reply': 'That sounds interesting! Have you ever encountered such a situation before?',
+        'ai_reply': 'Hello! Let\'s talk about your day, or anything you like. Try to use words like: $wordSpellingList.',
         'needs_correction': false,
         'corrected_text': null,
         'explanation': null,
@@ -100,9 +106,17 @@ Keep it concise and beautiful for a mobile app card detail. Do not return JSON, 
     final historyText = history.map((e) => "${e.role == 'user' ? 'User' : 'AI'}: ${e.text}").join('\n');
 
     final prompt = '''
-You are an AI conversation partner for English learners.
-The user is trying to practice the target word: "$targetWord".
-Engage in a natural dialogue. However, you must also analyze the user's latest input for grammatical correctness and naturalness.
+You are an expert AI English tutor. Your primary goal is to help the user naturally learn and memorize the target vocabulary words listed below during the chat.
+
+TARGET WORDS FOR THIS SESSION:
+$targetWordsInfo
+
+YOUR INSTRUCTIONS:
+1. Conduct a natural, friendly chat in English.
+2. In your response ("ai_reply"), you MUST naturally use 1 or 2 target words from the list, OR ask questions that encourage the user to use them.
+3. If the user uses any target words correctly (even in different tenses/plurals), praise them.
+4. Critically analyze the user's latest input ("User (Latest)").
+5. If the user's sentence has spelling/grammar errors or sounds unnatural, set "needs_correction" to true, write the "corrected_text" and provide a brief explanation in Japanese ("explanation"). Otherwise, set "needs_correction" to false.
 
 CONVERSATION HISTORY:
 $historyText
@@ -110,11 +124,11 @@ User (Latest): $userMsg
 
 Analyze the User's latest input. Respond in JSON format:
 {
-  "ai_reply": "Your natural conversational response in English (keep it to 1-2 sentences).",
+  "ai_reply": "Your natural, encouraging reply in English (1-2 sentences). Naturally incorporate or prompt for target words.",
   "needs_correction": true/false,
   "original_text": "$userMsg",
-  "corrected_text": "The corrected version of the user input (null if no correction needed).",
-  "explanation": "Brief explanation of why it was corrected in Japanese (null if no correction needed)."
+  "corrected_text": "Corrected English sentence (null if no correction needed).",
+  "explanation": "Japanese explanation for correction (null if no correction needed)."
 }
 ''';
 

@@ -20,7 +20,7 @@ jobs:
 
       - run: flutter pub get
 
-      - run: flutter build web --base-href "/vocabulary/"
+      - run: flutter build web --base-href "/vocabulary/" --pwa-strategy=none
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4

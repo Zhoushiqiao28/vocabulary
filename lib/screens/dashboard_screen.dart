@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../providers/providers.dart';
 import '../theme/app_theme.dart';
+import 'card_learning_screen.dart';
+import 'chat_selection_screen.dart';
+import 'text_scan_screen.dart';
+import 'settings_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(userProfileProvider);
+    final words = ref.watch(wordListProvider);
+    
+    // Calculate statistics
+    final masteredCount = words.where((e) => e.status == 1).toList().length;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -14,16 +26,16 @@ class DashboardScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Header (User Profile & AI Welcome Message)
-              _buildHeader(),
+              // Top Header
+              _buildHeader(context, profile.name),
               const SizedBox(height: 32),
 
               // AI Motivate Message (Glassmorphism card)
-              _buildAIMessageCard(),
+              _buildAIMessageCard(profile),
               const SizedBox(height: 32),
 
-              // Learning Stats / Heatmap Placeholder
-              _buildHeatmapCard(),
+              // Learning Stats / Heatmap
+              _buildHeatmapCard(profile, masteredCount),
               const SizedBox(height: 32),
 
               // Action Buttons / Navigation Cards
@@ -35,8 +47,8 @@ class DashboardScreen extends StatelessWidget {
                 icon: Icons.style_rounded,
                 color: AppTheme.primary,
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('スワイプカード学習画面は次のフェーズで実装されます')),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const CardLearningScreen()),
                   );
                 },
               ),
@@ -47,8 +59,8 @@ class DashboardScreen extends StatelessWidget {
                 icon: Icons.chat_bubble_rounded,
                 color: AppTheme.secondary,
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('AIチャット画面は次のフェーズで実装されます')),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const ChatSelectionScreen()),
                   );
                 },
               ),
@@ -59,8 +71,8 @@ class DashboardScreen extends StatelessWidget {
                 icon: Icons.document_scanner_rounded,
                 color: AppTheme.accent,
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('テキストスキャナー画面は次のフェーズで実装されます')),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const TextScanScreen()),
                   );
                 },
               ),
@@ -71,7 +83,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context, String name) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -88,7 +100,7 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Hiro 👋',
+              '$name 👋',
               style: GoogleFonts.outfit(
                 fontSize: 28,
                 color: AppTheme.textPrimary,
@@ -97,30 +109,43 @@ class DashboardScreen extends StatelessWidget {
             ),
           ],
         ),
-        // Simple Profile Icon with neon accent
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppTheme.primary, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primary.withOpacity(0.4),
-                blurRadius: 8,
-                spreadRadius: 1,
-              )
-            ]
-          ),
-          child: const Center(
-            child: Icon(Icons.person_outline_rounded, color: Colors.white),
+        // Navigate to Settings
+        InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            );
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppTheme.primary, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withOpacity(0.4),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                )
+              ]
+            ),
+            child: const Center(
+              child: Icon(Icons.settings_rounded, color: Colors.white),
+            ),
           ),
         )
       ],
     );
   }
 
-  Widget _buildAIMessageCard() {
+  Widget _buildAIMessageCard(dynamic profile) {
+    final interestList = profile.interests.join('」や「');
+    final String welcomeText = profile.apiKey.isEmpty
+        ? '【重要】右上アイコンからGemini APIキーを設定してください。キーを設定するまで仮のデータ（モック）で動作します。'
+        : '「$interestList」に関する新しいニュースが更新されています！今日の単語学習に宇宙船開発の例文を混ぜておきました。3分間集中してみましょう。';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20.0),
@@ -145,7 +170,7 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '「F1」と「宇宙開発」に関する新しいニュースが更新されています！今日の単語学習に宇宙船開発の例文を混ぜておきました。3分間集中してみましょう。',
+            welcomeText,
             style: TextStyle(
               fontSize: 14,
               color: AppTheme.textPrimary.withOpacity(0.9),
@@ -157,7 +182,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeatmapCard() {
+  Widget _buildHeatmapCard(dynamic profile, int masteredCount) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20.0),
@@ -173,7 +198,7 @@ class DashboardScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '学習ロードマップ',
+                '学習進捗（習得単語: $masteredCount語）',
                 style: GoogleFonts.outfit(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -185,7 +210,7 @@ class DashboardScreen extends StatelessWidget {
                   const Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 16),
                   const SizedBox(width: 4),
                   Text(
-                    '5日連続学習中',
+                    '${profile.streakDays}日連続学習中',
                     style: GoogleFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -302,7 +327,7 @@ class DashboardScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       description,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppTheme.textSecondary,
                         height: 1.3,
@@ -311,7 +336,7 @@ class DashboardScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
+              const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
             ],
           ),
         ),

@@ -1,0 +1,150 @@
+class Word {
+  final int id;
+  final String spelling;
+  final String meaningJa;
+  String? coreNuance;
+  int status; // 0: 未学習, 1: 覚えた, 2: 覚えてない
+  String? customExampleEn;
+  String? customExampleJa;
+  DateTime? reviewedAt;
+
+  Word({
+    required this.id,
+    required this.spelling,
+    required this.meaningJa,
+    this.coreNuance,
+    this.status = 0,
+    this.customExampleEn,
+    this.customExampleJa,
+    this.reviewedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'spelling': spelling,
+        'meaningJa': meaningJa,
+        'coreNuance': coreNuance,
+        'status': status,
+        'customExampleEn': customExampleEn,
+        'customExampleJa': customExampleJa,
+        'reviewedAt': reviewedAt?.toIso8601String(),
+      };
+
+  factory Word.fromJson(Map<String, dynamic> json) => Word(
+        id: json['id'],
+        spelling: json['spelling'],
+        meaningJa: json['meaningJa'],
+        coreNuance: json['coreNuance'],
+        status: json['status'] ?? 0,
+        customExampleEn: json['customExampleEn'],
+        customExampleJa: json['customExampleJa'],
+        reviewedAt: json['reviewedAt'] != null
+            ? DateTime.parse(json['reviewedAt'])
+            : null,
+      );
+
+  Word copyWith({
+    int? status,
+    String? coreNuance,
+    String? customExampleEn,
+    String? customExampleJa,
+    DateTime? reviewedAt,
+  }) {
+    return Word(
+      id: id,
+      spelling: spelling,
+      meaningJa: meaningJa,
+      coreNuance: coreNuance ?? this.coreNuance,
+      status: status ?? this.status,
+      customExampleEn: customExampleEn ?? this.customExampleEn,
+      customExampleJa: customExampleJa ?? this.customExampleJa,
+      reviewedAt: reviewedAt ?? this.reviewedAt,
+    );
+  }
+}
+
+class ChatMessage {
+  final String role; // 'user' or 'model'
+  final String text;
+  final bool needsCorrection;
+  final String? correctedText;
+  final String? explanation;
+  final DateTime sentAt;
+
+  ChatMessage({
+    required this.role,
+    required this.text,
+    this.needsCorrection = false,
+    this.correctedText,
+    this.explanation,
+    required this.sentAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'role': role,
+        'text': text,
+        'needsCorrection': needsCorrection,
+        'correctedText': correctedText,
+        'explanation': explanation,
+        'sentAt': sentAt.toIso8601String(),
+      };
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
+        role: json['role'],
+        text: json['text'],
+        needsCorrection: json['needsCorrection'] ?? false,
+        correctedText: json['correctedText'],
+        explanation: json['explanation'],
+        sentAt: DateTime.parse(json['sentAt']),
+      );
+}
+
+class UserProfile {
+  final String name;
+  final List<String> interests;
+  final String apiKey;
+  final int streakDays;
+  final DateTime? lastLearnedAt;
+
+  UserProfile({
+    this.name = 'User',
+    this.interests = const ['Technology', 'F1', 'Space Rover'],
+    this.apiKey = '',
+    this.streakDays = 0,
+    this.lastLearnedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'interests': interests,
+        'apiKey': apiKey,
+        'streakDays': streakDays,
+        'lastLearnedAt': lastLearnedAt?.toIso8601String(),
+      };
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
+        name: json['name'] ?? 'User',
+        interests: List<String>.from(json['interests'] ?? []),
+        apiKey: json['apiKey'] ?? '',
+        streakDays: json['streakDays'] ?? 0,
+        lastLearnedAt: json['lastLearnedAt'] != null
+            ? DateTime.parse(json['lastLearnedAt'])
+            : null,
+      );
+
+  UserProfile copyWith({
+    String? name,
+    List<String>? interests,
+    String? apiKey,
+    int? streakDays,
+    DateTime? lastLearnedAt,
+  }) {
+    return UserProfile(
+      name: name ?? this.name,
+      interests: interests ?? this.interests,
+      apiKey: apiKey ?? this.apiKey,
+      streakDays: streakDays ?? this.streakDays,
+      lastLearnedAt: lastLearnedAt ?? this.lastLearnedAt,
+    );
+  }
+}

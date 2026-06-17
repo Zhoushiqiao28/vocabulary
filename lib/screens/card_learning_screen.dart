@@ -28,7 +28,11 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
   late Animation<Offset> _swipeAnimation;
   double _swipeAngle = 0.0;
 
-  // Background Highlight Animation
+  // 3D Flip Card Controllers
+  bool _showFront = true;
+  late AnimationController _flipController;
+
+  // Background Highlight Animation Progress
   double _swipeProgressRight = 0.0;
   double _swipeProgressLeft = 0.0;
   double _swipeProgressUp = 0.0;
@@ -48,12 +52,16 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _swipeController, curve: Curves.easeOut));
 
+    _flipController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
     _initWords();
   }
 
   Future<void> _initWords() async {
     final words = ref.read(wordListProvider);
-    // Pick 10 words that are not fully mastered
     final notMastered = words.where((e) => e.status != 1).toList();
     if (notMastered.isEmpty) {
       _learningWords = words.take(10).toList();
@@ -66,13 +74,11 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
       _isLoading = false;
     });
 
-    // Prefetch first word's custom example
     if (_learningWords.isNotEmpty) {
       _prefetchExamples(0);
     }
   }
 
-  // Prefetch examples for current and next index to ensure zero latency
   Future<void> _prefetchExamples(int index) async {
     if (index >= _learningWords.length) return;
     
@@ -81,7 +87,6 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
       _fetchExampleForWord(index);
     }
 
-    // Prefetch next word
     final nextIndex = index + 1;
     if (nextIndex < _learningWords.length) {
       final nextWord = _learningWords[nextIndex];
@@ -109,7 +114,6 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
           customExampleJa: result['sentence_ja'],
         );
       });
-      // Save details back to storage
       ref.read(wordListProvider.notifier).updateWordDetails(
             word.id,
             customExampleEn: result['sentence_en'],
@@ -121,7 +125,20 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
   @override
   void dispose() {
     _swipeController.dispose();
+    _flipController.dispose();
     super.dispose();
+  }
+
+  void _flipCard() {
+    if (_flipController.isAnimating) return;
+    if (_showFront) {
+      _flipController.forward();
+    } else {
+      _flipController.reverse();
+    }
+    setState(() {
+      _showFront = !_showFront;
+    });
   }
 
   void _onPanStart(DragStartDetails details) {
@@ -133,9 +150,8 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
   void _onPanUpdate(DragUpdateDetails details) {
     setState(() {
       _dragOffset += details.delta;
-      _swipeAngle = (_dragOffset.dx / 300.0) * 0.15; // 傾き
+      _swipeAngle = (_dragOffset.dx / 300.0) * 0.15;
 
-      // Calculate progress (0.0 to 1.0)
       _swipeProgressRight = max(0.0, min(1.0, _dragOffset.dx / 150.0));
       _swipeProgressLeft = max(0.0, min(1.0, -_dragOffset.dx / 150.0));
       _swipeProgressUp = max(0.0, min(1.0, -_dragOffset.dy / 150.0));
@@ -144,21 +160,15 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
 
   void _onPanEnd(DragEndDetails details) {
     _isDragging = false;
-    
-    // Threshold for swipe
     const double threshold = 120.0;
     
     if (_dragOffset.dx > threshold) {
-      // Swipe Right: Got it! (覚えた)
       _triggerSwipe(const Offset(500, 0), 1);
     } else if (_dragOffset.dx < -threshold) {
-      // Swipe Left: Forgot/Not sure (覚えてない)
       _triggerSwipe(const Offset(-500, 0), 2);
     } else if (_dragOffset.dy < -threshold) {
-      // Swipe Up: AI Ask (AIに質問)
       _askAIAboutWord();
     } else {
-      // Snap back to center
       setState(() {
         _dragOffset = Offset.zero;
         _swipeAngle = 0.0;
@@ -177,7 +187,6 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
 
     await _swipeController.forward();
     
-    // Update word status in db
     final word = _learningWords[_currentIndex];
     await ref.read(wordListProvider.notifier).updateWordStatus(word.id, status);
 
@@ -189,15 +198,15 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
         _swipeProgressRight = 0.0;
         _swipeProgressLeft = 0.0;
         _swipeProgressUp = 0.0;
+        _showFront = true;
       });
       _swipeController.reset();
+      _flipController.reset();
 
-      // Prefetch for new index
       _prefetchExamples(_currentIndex);
     }
   }
 
-  // Swipe Up: Ask AI for Origin / Nuance Detail
   Future<void> _askAIAboutWord() async {
     setState(() {
       _dragOffset = Offset.zero;
@@ -209,7 +218,6 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
     });
 
     final word = _learningWords[_currentIndex];
-    
     final gemini = ref.read(geminiServiceProvider);
     String explanation = word.coreNuance ?? '';
     
@@ -342,7 +350,6 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
 
     final currentWord = _learningWords[_currentIndex];
 
-    // Compute dynamic background color overlay based on swipe direction progress
     Color overlayColor = Colors.transparent;
     if (_swipeProgressRight > 0) {
       overlayColor = Colors.teal.withOpacity(_swipeProgressRight * 0.15);
@@ -355,7 +362,7 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '学習セッション (${_currentIndex + 1}/${_learningWords.length})',
+          '暗記カード (${_currentIndex + 1}/${_learningWords.length})',
           style: GoogleFonts.outfit(fontSize: 16),
         ),
         leading: IconButton(
@@ -383,9 +390,8 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
             height: double.infinity,
           ),
 
-          // Main swipe body
           Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Column(
               children: [
                 Expanded(
@@ -393,7 +399,7 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // Next card (underneath current card for visual depth)
+                        // Next card (visual depth)
                         if (_currentIndex + 1 < _learningWords.length)
                           Transform.scale(
                             scale: 0.95,
@@ -403,8 +409,9 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
                             ),
                           ),
 
-                        // Current Swiping Card
+                        // Current Card
                         GestureDetector(
+                          onTap: _flipCard,
                           onPanStart: _onPanStart,
                           onPanUpdate: _onPanUpdate,
                           onPanEnd: _onPanEnd,
@@ -443,9 +450,14 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                
+                Text(
+                  '💡 カードをタップして裏返す',
+                  style: TextStyle(color: AppTheme.textSecondary.withOpacity(0.8), fontSize: 13),
+                ),
                 const SizedBox(height: 24),
                 
-                // Instructions / Legend UI
                 _buildSwipeLegend(),
               ],
             ),
@@ -456,6 +468,36 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
   }
 
   Widget _buildCard(Word word, {bool isDummy = false}) {
+    if (isDummy) {
+      return _buildCardContent(word, isFront: true);
+    }
+
+    return AnimatedBuilder(
+      animation: _flipController,
+      builder: (context, child) {
+        // 3D Flip Matrix
+        final transform = Matrix4.identity()
+          ..setEntry(3, 2, 0.001) // perspective
+          ..rotateY(_flipController.value * pi);
+
+        final isFrontHalf = _flipController.value < 0.5;
+
+        return Transform(
+          transform: transform,
+          alignment: Alignment.center,
+          child: isFrontHalf
+              ? _buildCardContent(word, isFront: true)
+              : Transform(
+                  transform: Matrix4.identity()..rotateY(pi), // prevent text mirroring
+                  alignment: Alignment.center,
+                  child: _buildCardContent(word, isFront: false),
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCardContent(Word word, {required bool isFront}) {
     return Container(
       width: double.infinity,
       height: 420,
@@ -463,7 +505,10 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1.5),
+        border: Border.all(
+          color: isFront ? Colors.white.withOpacity(0.08) : AppTheme.primary.withOpacity(0.2),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.3),
@@ -476,34 +521,55 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Spelling
-          Text(
-            word.spelling,
-            style: GoogleFonts.outfit(
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-              letterSpacing: 0.5,
+          if (isFront) ...[
+            // Front side: Just the English word
+            Text(
+              word.spelling,
+              style: GoogleFonts.outfit(
+                fontSize: 38,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          
-          // Japanese Meaning
-          Text(
-            word.meaningJa,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 48),
-
-          // Custom AI Interest-based Example
-          if (!isDummy) ...[
+            const SizedBox(height: 20),
             Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'タップして意味を確認',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+            )
+          ] else ...[
+            // Back side: Japanese, Core Nuance, AI Example
+            Text(
+              word.spelling,
+              style: GoogleFonts.outfit(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              word.meaningJa,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+
+            // AI interest sentence
+            Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(16.0),
               decoration: AppTheme.glassBoxDecoration(color: AppTheme.secondary),
               child: Column(
@@ -511,10 +577,10 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.auto_awesome_rounded, color: AppTheme.secondary, size: 16),
+                      const Icon(Icons.auto_awesome_rounded, color: AppTheme.secondary, size: 14),
                       const SizedBox(width: 6),
                       Text(
-                        'AI パーソナライズ例文',
+                        'AI興味関心例文',
                         style: GoogleFonts.outfit(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -612,7 +678,7 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
               ),
               const SizedBox(height: 32),
               Text(
-                'Good Job! 🎉',
+                'セッション完了！ 🎉',
                 style: GoogleFonts.outfit(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -621,7 +687,7 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
               ),
               const SizedBox(height: 12),
               Text(
-                '今日のセッションが完了しました。\nまた次の10語を学びましょう！',
+                '今日のカード暗記が完了しました。\nまた次の10語を学びましょう！',
                 style: const TextStyle(
                   fontSize: 15,
                   color: AppTheme.textSecondary,

@@ -4,8 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../providers/providers.dart';
 import '../theme/app_theme.dart';
 import 'card_learning_screen.dart';
+import 'quiz_test_screen.dart';
+import 'spelling_test_screen.dart';
 import 'chat_selection_screen.dart';
-import 'text_scan_screen.dart';
 import 'settings_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -15,67 +16,86 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(userProfileProvider);
     final words = ref.watch(wordListProvider);
-    
-    // Calculate statistics
+
     final masteredCount = words.where((e) => e.status == 1).toList().length;
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Top Header
-              _buildHeader(context, profile.name),
-              const SizedBox(height: 32),
-
-              // AI Motivate Message (Glassmorphism card)
-              _buildAIMessageCard(profile),
-              const SizedBox(height: 32),
-
-              // Learning Stats / Heatmap
-              _buildHeatmapCard(profile, masteredCount),
-              const SizedBox(height: 32),
-
-              // Action Buttons / Navigation Cards
-              _buildSectionTitle('⚡ クイック学習メニュー'),
+              _buildHeader(context, profile),
               const SizedBox(height: 16),
-              _buildActionCard(
-                title: '英単語カード学習',
-                description: '3方向スワイプでサクサク記憶。AIによる興味関心例文つき。',
-                icon: Icons.style_rounded,
-                color: AppTheme.primary,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const CardLearningScreen()),
-                  );
-                },
+
+              // Compact AI Message Banner
+              _buildAIMessageBanner(profile),
+              const SizedBox(height: 24),
+
+              // HUGE main start card
+              Expanded(
+                flex: 4,
+                child: _buildMainStartCard(context),
               ),
-              const SizedBox(height: 16),
-              _buildActionCard(
-                title: 'AI対話テスト (チャット)',
-                description: '学んだ単語を実際に使って会話。AIからのリアルタイム添削。',
-                icon: Icons.chat_bubble_rounded,
-                color: AppTheme.secondary,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const ChatSelectionScreen()),
-                  );
-                },
+              const SizedBox(height: 20),
+
+              // Practice modes
+              Expanded(
+                flex: 4,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSubActionCard(
+                            context: context,
+                            title: '4択テスト',
+                            icon: Icons.quiz_rounded,
+                            color: AppTheme.secondary,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => const QuizTestScreen()),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildSubActionCard(
+                            context: context,
+                            title: 'スペルテスト',
+                            icon: Icons.keyboard_rounded,
+                            color: AppTheme.accent,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => const SpellingTestScreen()),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSubActionCard(
+                      context: context,
+                      title: 'AIチャット対話テスト',
+                      description: '覚えた単語を使ってAIと自然な英会話',
+                      icon: Icons.chat_bubble_rounded,
+                      color: AppTheme.primary,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const ChatSelectionScreen()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              _buildActionCard(
-                title: '文脈テキストスキャン',
-                description: '技術ドキュメントや英語ニュースから、重要単語を瞬時に抽出。',
-                icon: Icons.document_scanner_rounded,
-                color: AppTheme.accent,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const TextScanScreen()),
-                  );
-                },
-              ),
+
+              // Bottom mini footer
+              _buildMiniFooter(masteredCount, words.length),
             ],
           ),
         ),
@@ -83,98 +103,84 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String name) {
+  Widget _buildHeader(BuildContext context, dynamic profile) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Welcome Back,',
-              style: GoogleFonts.outfit(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '$name 👋',
-              style: GoogleFonts.outfit(
-                fontSize: 28,
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Text(
+                  '${profile.name} 👋',
+                  style: GoogleFonts.outfit(
+                    fontSize: 22,
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.orangeAccent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 12),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${profile.streakDays}日連続',
+                        style: GoogleFonts.outfit(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orangeAccent,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              ],
             ),
           ],
         ),
-        // Navigate to Settings
-        InkWell(
-          onTap: () {
+        IconButton(
+          icon: const Icon(Icons.settings_rounded, color: AppTheme.textSecondary),
+          onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const SettingsScreen()),
             );
           },
-          borderRadius: BorderRadius.circular(24),
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.primary, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primary.withOpacity(0.4),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                )
-              ]
-            ),
-            child: const Center(
-              child: Icon(Icons.settings_rounded, color: Colors.white),
-            ),
-          ),
-        )
+        ),
       ],
     );
   }
 
-  Widget _buildAIMessageCard(dynamic profile) {
-    final interestList = profile.interests.join('」や「');
-    final String welcomeText = profile.apiKey.isEmpty
-        ? '【重要】右上アイコンからGemini APIキーを設定してください。キーを設定するまで仮のデータ（モック）で動作します。'
-        : '「$interestList」に関する新しいニュースが更新されています！今日の単語学習に宇宙船開発の例文を混ぜておきました。3分間集中してみましょう。';
+  Widget _buildAIMessageBanner(dynamic profile) {
+    final welcomeText = profile.apiKey.isEmpty
+        ? '⚠️ 右上からGemini APIキーを設定してください。モックモードで動作中。'
+        : '今日の暗記カードに「${profile.interests.first}」の例文を追加しました！さあ、始めましょう。';
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: AppTheme.glassBoxDecoration(color: AppTheme.primary),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.auto_awesome_rounded, color: AppTheme.secondary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'AI Personal Agent',
-                style: GoogleFonts.outfit(
-                  fontSize: 12,
-                  color: AppTheme.secondary,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
+          const Icon(Icons.auto_awesome_rounded, color: AppTheme.secondary, size: 16),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              welcomeText,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.textPrimary,
+                height: 1.3,
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            welcomeText,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textPrimary.withOpacity(0.9),
-              height: 1.5,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -182,164 +188,163 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeatmapCard(dynamic profile, int masteredCount) {
+  Widget _buildMainStartCard(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppTheme.primary, Color(0xFF5A189A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withOpacity(0.3),
+            blurRadius: 15,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CardLearningScreen()),
+            );
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(28.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    color: Colors.white12,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.style_rounded, color: Colors.white, size: 36),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '暗記カード学習を開始',
+                  style: GoogleFonts.outfit(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'タップして表裏をめくり、スワイプで覚えたか分類',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubActionCard({
+    required BuildContext context,
+    required String title,
+    String? description,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final bool hasDesc = description != null;
+    return Container(
+      height: hasDesc ? 76 : 110,
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '学習進捗（習得単語: $masteredCount語）',
-                style: GoogleFonts.outfit(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              Row(
-                children: [
-                  const Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${profile.streakDays}日連続学習中',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.orangeAccent,
-                    ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: hasDesc ? MainAxisAlignment.start : MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: color.withOpacity(0.3)),
                   ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          // Simple Grid representing contribution days
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 15,
-              mainAxisSpacing: 4,
-              crossAxisSpacing: 4,
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      if (hasDesc) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          description,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      ]
+                    ],
+                  ),
+                ),
+                if (hasDesc) const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary, size: 20),
+              ],
             ),
-            itemCount: 75,
-            itemBuilder: (context, index) {
-              Color cellColor = AppTheme.surface;
-              if (index == 12 || index == 24 || index == 35 || index == 48 || index == 50 || index > 65) {
-                cellColor = AppTheme.primary;
-              } else if (index == 15 || index == 28 || index == 42 || index == 60) {
-                cellColor = AppTheme.primary.withOpacity(0.4);
-              } else if (index == 2 || index == 5 || index == 40 || index == 55) {
-                cellColor = AppTheme.secondary.withOpacity(0.5);
-              }
-              return Container(
-                decoration: BoxDecoration(
-                  color: cellColor == AppTheme.surface ? Colors.white.withOpacity(0.05) : cellColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text('Less ', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
-              Container(width: 8, height: 8, color: Colors.white.withOpacity(0.05)),
-              const SizedBox(width: 2),
-              Container(width: 8, height: 8, color: AppTheme.primary.withOpacity(0.4)),
-              const SizedBox(width: 2),
-              Container(width: 8, height: 8, color: AppTheme.primary),
-              const SizedBox(width: 4),
-              Text('More', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
-            ],
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.outfit(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: AppTheme.textPrimary,
-      ),
-    );
-  }
-
-  Widget _buildActionCard({
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20.0),
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: color.withOpacity(0.3)),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
-            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildMiniFooter(int masteredCount, int totalCount) {
+    final percent = totalCount > 0 ? (masteredCount / totalCount * 100).toStringAsFixed(1) : '0';
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '📊 習得状況: $masteredCount / $totalCount 語 ($percent%)',
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+          ),
+          Text(
+            'VocaBA v2.0',
+            style: GoogleFonts.outfit(color: AppTheme.textSecondary.withOpacity(0.5), fontSize: 10),
+          )
+        ],
       ),
     );
   }

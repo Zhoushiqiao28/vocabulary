@@ -203,7 +203,7 @@ class CorsProxyClient extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     if (kIsWeb) {
       try {
-        final proxyUrl = Uri.parse('https://corsproxy.io/?${Uri.encodeComponent(request.url.toString())}');
+        final proxyUrl = Uri.parse('https://api.allorigins.win/raw?url=${Uri.encodeComponent(request.url.toString())}');
         
         // Read body to bytes to avoid chunked transfer issues on Web
         final bytes = await request.finalize().toBytes();

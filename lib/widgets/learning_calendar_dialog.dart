@@ -102,14 +102,15 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.calendar_month_rounded, color: AppTheme.primary, size: 20),
+                        const Icon(Icons.analytics_rounded, color: AppTheme.primary, size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          '学習履歴カレンダー',
-                          style: GoogleFonts.outfit(
+                          'RACE LOG',
+                          style: GoogleFonts.orbitron(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w900,
                             color: AppTheme.textPrimary,
+                            letterSpacing: 1.0,
                           ),
                         ),
                       ],
@@ -216,30 +217,30 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                     Color textColor = AppTheme.textPrimary;
                     
                     if (learnedCount >= profile.dailyTarget) {
-                      // 目標達成: プレミアムグラデーション
+                      // 目標達成（パープル・ベストラップ）
                       boxDecoration = BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: const LinearGradient(
-                          colors: [Colors.teal, Colors.tealAccent],
+                          colors: [Color(0xFF8A2BE2), AppTheme.secondary],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         border: isToday ? Border.all(color: AppTheme.primary, width: 1.5) : null,
                       );
-                      textColor = Colors.black87;
+                      textColor = Colors.white;
                     } else if (learnedCount >= 5) {
-                      // 中位の学習量: 中位のティール
+                      // 中位（グリーン）
                       boxDecoration = BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.teal.withOpacity(0.55),
+                        color: Colors.greenAccent.withOpacity(0.6),
                         border: isToday ? Border.all(color: AppTheme.primary, width: 1.5) : null,
                       );
-                      textColor = AppTheme.textPrimary;
+                      textColor = Colors.black87;
                     } else if (learnedCount > 0) {
-                      // 少ない学習量: 薄いティール
+                      // 少量（薄いグリーン）
                       boxDecoration = BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.teal.withOpacity(0.22),
+                        color: Colors.greenAccent.withOpacity(0.22),
                         border: isToday ? Border.all(color: AppTheme.primary, width: 1.5) : null,
                       );
                       textColor = AppTheme.textPrimary;
@@ -248,7 +249,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                       boxDecoration = BoxDecoration(
                         shape: BoxShape.circle,
                         border: isToday ? Border.all(color: AppTheme.primary, width: 1.5) : null,
-                        color: isToday ? AppTheme.primary.withOpacity(0.1) : Colors.transparent,
+                        color: isToday ? AppTheme.primary.withOpacity(0.15) : Colors.transparent,
                       );
                       textColor = isToday ? AppTheme.primary : AppTheme.textPrimary;
                     }
@@ -274,12 +275,12 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                 ),
                 const SizedBox(height: 20),
 
-                // Monthly Summary Card
+                // Monthly Summary Card (F1 Theme)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppTheme.primary.withOpacity(0.15)),
                   ),
                   child: Row(
@@ -290,7 +291,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                           color: AppTheme.primary.withOpacity(0.12),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.star_rounded, color: AppTheme.primary, size: 20),
+                        child: const Icon(Icons.flag_rounded, color: AppTheme.primary, size: 20),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -298,14 +299,14 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '今月の学習実績',
+                              '今月の走行実績',
                               style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '合計 $learnedInMonthCount 日学習しました',
+                              '合計 $learnedInMonthCount セッション走破しました',
                               style: GoogleFonts.outfit(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.textPrimary,
                               ),
@@ -314,10 +315,10 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                         ),
                       ),
                       Text(
-                        '継続中: ${profile.streakDays}日',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                        'STREAK: ${profile.streakDays}日',
+                        style: GoogleFonts.orbitron(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
                           color: Colors.orangeAccent,
                         ),
                       ),

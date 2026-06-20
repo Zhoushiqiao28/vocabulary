@@ -80,8 +80,9 @@ class DashboardScreen extends ConsumerWidget {
                         Expanded(
                           child: _buildSubActionCard(
                             context: context,
-                            title: '4択テスト',
-                            icon: Icons.quiz_rounded,
+                            title: 'SPEED TRAP',
+                            description: '4択テストで瞬発力を測定',
+                            icon: Icons.speed_rounded,
                             color: AppTheme.secondary,
                             onTap: () {
                               _startLearning(
@@ -98,8 +99,9 @@ class DashboardScreen extends ConsumerWidget {
                         Expanded(
                           child: _buildSubActionCard(
                             context: context,
-                            title: 'スペルテスト',
-                            icon: Icons.keyboard_rounded,
+                            title: 'PIT STOP',
+                            description: 'スペルテストで正確性を強化',
+                            icon: Icons.build_circle_rounded,
                             color: AppTheme.accent,
                             onTap: () {
                               _startLearning(
@@ -117,9 +119,9 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     _buildSubActionCard(
                       context: context,
-                      title: 'AIチャット対話テスト',
-                      description: '苦手な単語や今日の学習単語をAIが自動で会話に組み込み',
-                      icon: Icons.chat_bubble_rounded,
+                      title: 'TEAM RADIO (AI対話)',
+                      description: '今日の学習単語をAIが自動で無線会話に組み込み',
+                      icon: Icons.headset_mic_rounded,
                       color: AppTheme.primary,
                       onTap: () {
                         Navigator.of(context).push(
@@ -180,44 +182,78 @@ class DashboardScreen extends ConsumerWidget {
       title = 'Challenger';
     }
 
+    // 3. ERS (XP) Bar Segments (10 blocks)
+    final List<Widget> segments = [];
+    for (int i = 0; i < 10; i++) {
+      final double threshold = i / 10.0;
+      final bool active = xpProgress > threshold;
+      segments.add(
+        Expanded(
+          child: Container(
+            height: 6,
+            margin: const EdgeInsets.symmetric(horizontal: 1.5),
+            decoration: BoxDecoration(
+              color: active 
+                  ? AppTheme.accent.withOpacity(0.9) // アシッドライムグリーン
+                  : Colors.white.withOpacity(0.04), // 未充電
+              borderRadius: BorderRadius.circular(1.5),
+              border: Border.all(
+                color: active ? AppTheme.accent.withOpacity(0.5) : Colors.transparent,
+                width: 0.5,
+              ),
+              boxShadow: active ? [
+                BoxShadow(
+                  color: AppTheme.accent.withOpacity(0.3),
+                  blurRadius: 4,
+                  spreadRadius: 0.5,
+                )
+              ] : null,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.07)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           )
         ],
       ),
       child: Row(
         children: [
-          // 左側: 今日の目標プログレスリング
+          // 左側: レブリミットLED風目標リング（タコメーター風）
           Stack(
             alignment: Alignment.center,
             children: [
               SizedBox(
-                width: 76,
-                height: 76,
+                width: 78,
+                height: 78,
                 child: ShaderMask(
                   shaderCallback: (rect) {
-                    return SweepGradient(
-                      startAngle: 0.0,
-                      endAngle: pi * 2,
-                      colors: isGoalAchieved
-                          ? [Colors.amber, Colors.orangeAccent, Colors.amber]
-                          : [AppTheme.primary, Colors.blueAccent, AppTheme.primary],
-                      stops: const [0.0, 0.5, 1.0],
+                    return const SweepGradient(
+                      startAngle: -pi / 2,
+                      endAngle: pi * 1.5,
+                      colors: [
+                        Colors.greenAccent,
+                        Colors.amberAccent,
+                        AppTheme.primary,
+                      ],
+                      stops: [0.0, 0.65, 1.0],
                     ).createShader(rect);
                   },
                   child: CircularProgressIndicator(
                     value: goalProgress == 0 ? 0.01 : goalProgress,
                     strokeWidth: 6,
-                    backgroundColor: Colors.white.withOpacity(0.08),
+                    backgroundColor: Colors.white.withOpacity(0.05),
                     valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 ),
@@ -225,103 +261,142 @@ class DashboardScreen extends ConsumerWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isGoalAchieved)
-                    const Icon(Icons.emoji_events_rounded, color: Colors.amber, size: 20)
-                  else
+                  if (isGoalAchieved) ...[
+                    Text(
+                      '🏁 P1',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.amberAccent,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    const Text(
+                      'LIMIT',
+                      style: TextStyle(
+                        fontSize: 7,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amberAccent,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ] else ...[
                     Text(
                       '$todayReviewedCount',
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
+                      style: GoogleFonts.shareTechMono(
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                  Text(
-                    '/$target語',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AppTheme.textSecondary,
-                      fontWeight: FontWeight.w500,
+                    Text(
+                      '/$target LAP',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               )
             ],
           ),
           const SizedBox(width: 20),
           
-          // 右側: レベルとXPプログレス
+          // 右側: ギアインジケーター（Lv）＆ ERSバッテリーエネルギーゲージ
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // レベルと称号
+                // ギアインジケーター風レベル表示
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.secondary.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.secondary.withOpacity(0.3)),
-                      ),
-                      child: Text(
-                        'Lv. $level',
-                        style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.secondary,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'GEAR',
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textSecondary,
+                            letterSpacing: 1.0,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$level',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.primary,
+                            height: 0.95,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 16),
                     Expanded(
-                      child: Text(
-                        title,
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'STATUS',
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textSecondary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            title.toUpperCase(),
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 
-                // XPバー
+                // ERSエネルギー表示
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      isGoalAchieved ? '目標達成！🎉' : '今日の学習進捗',
+                    const Text(
+                      'ENERGY / ERS',
                       style: TextStyle(
-                        fontSize: 10,
-                        color: isGoalAchieved ? Colors.amber : AppTheme.textSecondary,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 9,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     Text(
                       '$xpInCurrentLevel / 150 XP',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.shareTechMono(
                         fontSize: 10,
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.w600,
+                        color: AppTheme.accent,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: xpProgress,
-                    minHeight: 6,
-                    backgroundColor: Colors.white.withOpacity(0.05),
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                  ),
+                // 分割セグメント
+                Row(
+                  children: segments,
                 ),
               ],
             ),
@@ -438,17 +513,18 @@ class DashboardScreen extends ConsumerWidget {
           width: double.infinity,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppTheme.primary, Color(0xFF5A189A)],
+              colors: [AppTheme.primary, Color(0xFF1E0100), AppTheme.surface],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.primary.withOpacity(0.3), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primary.withOpacity(0.3),
-                blurRadius: 15,
-                spreadRadius: 2,
-                offset: const Offset(0, 8),
+                color: AppTheme.primary.withOpacity(0.2),
+                blurRadius: 12,
+                spreadRadius: 1,
+                offset: const Offset(0, 4),
               )
             ],
           ),
@@ -464,35 +540,45 @@ class DashboardScreen extends ConsumerWidget {
                   screenBuilder: (config) => CardLearningScreen(config: config),
                 );
               },
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(16),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 18.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(10),
                       decoration: const BoxDecoration(
-                        color: Colors.white12,
+                        color: Colors.white10,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.style_rounded, color: Colors.white, size: 32),
+                      child: const Icon(Icons.sports_score_rounded, color: Colors.white, size: 28),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
-                      '暗記カード学習を開始',
-                      style: GoogleFonts.outfit(
+                      'RACE START',
+                      style: GoogleFonts.orbitron(
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w900,
                         color: Colors.white,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '暗記カードでセッションを開始',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white.withOpacity(0.9),
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       subText,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 10,
+                        color: Colors.white.withOpacity(0.65),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -510,7 +596,7 @@ class DashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: Colors.redAccent.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
               ),
               child: Row(
@@ -547,16 +633,16 @@ class DashboardScreen extends ConsumerWidget {
       height: hasDesc ? 76 : 110,
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Row(
               mainAxisAlignment: hasDesc ? MainAxisAlignment.start : MainAxisAlignment.center,
               children: [
@@ -564,9 +650,9 @@ class DashboardScreen extends ConsumerWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: color.withOpacity(0.3)),
+                    color: color.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withOpacity(0.25)),
                   ),
                   child: Icon(icon, color: color, size: 20),
                 ),
@@ -578,10 +664,11 @@ class DashboardScreen extends ConsumerWidget {
                     children: [
                       Text(
                         title,
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                        style: GoogleFonts.orbitron(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
                           color: AppTheme.textPrimary,
+                          letterSpacing: 0.5,
                         ),
                       ),
                       if (hasDesc) ...[
@@ -620,7 +707,7 @@ class DashboardScreen extends ConsumerWidget {
             style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
           ),
           Text(
-            'VocaBA v2.7',
+            'VocaBA v2.9',
             style: GoogleFonts.outfit(color: AppTheme.textSecondary.withOpacity(0.5), fontSize: 10),
           )
         ],

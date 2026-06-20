@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:http/http.dart' as http;
 import '../models/models.dart';
 
 class GeminiService {
@@ -14,6 +16,7 @@ class GeminiService {
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
         ),
+        httpClient: CorsProxyClient(),
       );
     }
   }
@@ -76,7 +79,11 @@ Keep it concise and beautiful for a mobile app card detail. Do not return JSON, 
 ''';
 
     try {
-      final plainModel = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey);
+      final plainModel = GenerativeModel(
+        model: 'gemini-1.5-flash',
+        apiKey: _apiKey,
+        httpClient: CorsProxyClient(),
+      );
       final content = [Content.text(prompt)];
       final response = await plainModel.generateContent(content);
       return response.text ?? '解説を生成できませんでした。';
@@ -185,5 +192,28 @@ Respond in JSON format:
     } catch (e) {
       return [];
     }
+  }
+}
+
+// Custom HTTP Client to proxy request in web to bypass CORS limitations
+class CorsProxyClient extends http.BaseClient {
+  final http.Client _inner = http.Client();
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    if (kIsWeb) {
+      final proxyUrl = Uri.parse('https://corsproxy.io/?${Uri.encodeComponent(request.url.toString())}');
+      final newRequest = http.StreamedRequest(request.method, proxyUrl);
+      newRequest.headers.addAll(request.headers);
+      
+      request.finalize().listen(
+        newRequest.sink.add,
+        onError: newRequest.sink.addError,
+        onDone: newRequest.sink.close,
+        cancelOnError: true,
+      );
+      return _inner.send(newRequest);
+    }
+    return _inner.send(request);
   }
 }

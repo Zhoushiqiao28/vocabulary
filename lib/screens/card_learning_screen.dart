@@ -125,24 +125,69 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
     });
 
     if (_learningWords.isNotEmpty) {
-      _prefetchExamples(0);
+      _prefetchWordData(0);
     }
   }
 
-  Future<void> _prefetchExamples(int index) async {
+  Future<void> _prefetchWordData(int index) async {
     if (index >= _learningWords.length) return;
     
+    // 現在の単語の例文・解説をフェッチ
     final currentWord = _learningWords[index];
     if (currentWord.customExampleEn == null) {
       _fetchExampleForWord(index);
     }
+    if (currentWord.coreNuance == null || currentWord.coreNuance!.isEmpty) {
+      _fetchNuanceForWord(index);
+    }
 
+    // 次の単語
     final nextIndex = index + 1;
     if (nextIndex < _learningWords.length) {
       final nextWord = _learningWords[nextIndex];
       if (nextWord.customExampleEn == null) {
         _fetchExampleForWord(nextIndex);
       }
+      if (nextWord.coreNuance == null || nextWord.coreNuance!.isEmpty) {
+        _fetchNuanceForWord(nextIndex);
+      }
+    }
+
+    // その次の単語（1秒遅れてフェッチ）
+    final nextNextIndex = index + 2;
+    if (nextNextIndex < _learningWords.length) {
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted && _currentIndex == index) {
+          final nextNextWord = _learningWords[nextNextIndex];
+          if (nextNextWord.customExampleEn == null) {
+            _fetchExampleForWord(nextNextIndex);
+          }
+          if (nextNextWord.coreNuance == null || nextNextWord.coreNuance!.isEmpty) {
+            _fetchNuanceForWord(nextNextIndex);
+          }
+        }
+      });
+    }
+  }
+
+  Future<void> _fetchNuanceForWord(int index) async {
+    if (index >= _learningWords.length) return;
+    final word = _learningWords[index];
+    final gemini = ref.read(geminiServiceProvider);
+    
+    try {
+      final explanation = await gemini.getWordNuance(word.spelling, word.meaningJa);
+      if (mounted) {
+        setState(() {
+          _learningWords[index] = word.copyWith(coreNuance: explanation);
+        });
+        ref.read(wordListProvider.notifier).updateWordDetails(
+              word.id,
+              coreNuance: explanation,
+            );
+      }
+    } catch (e) {
+      debugPrint('Failed to prefetch nuance for ${word.spelling}: $e');
     }
   }
 
@@ -259,11 +304,28 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
       _swipeController.reset();
       _flipController.reset();
 
-      _prefetchExamples(_currentIndex);
+      _prefetchWordData(_currentIndex);
     }
   }
 
   Future<void> _askAIAboutWord() async {
+    final word = _learningWords[_currentIndex];
+    String explanation = word.coreNuance ?? '';
+
+    // すでにキャッシュがある場合は、ローディングを挟まずに即座に表示
+    if (explanation.isNotEmpty) {
+      setState(() {
+        _dragOffset = Offset.zero;
+        _swipeAngle = 0.0;
+        _swipeProgressRight = 0.0;
+        _swipeProgressLeft = 0.0;
+        _swipeProgressUp = 0.0;
+      });
+      _showAIExplanationBottomSheet(word.spelling, explanation);
+      return;
+    }
+
+    // キャッシュがない場合のみローディングを表示してAPI通信
     setState(() {
       _dragOffset = Offset.zero;
       _swipeAngle = 0.0;
@@ -273,11 +335,9 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
       _isAILoading = true;
     });
 
-    final word = _learningWords[_currentIndex];
     final gemini = ref.read(geminiServiceProvider);
-    String explanation = word.coreNuance ?? '';
     
-    if (explanation.isEmpty) {
+    try {
       explanation = await gemini.getWordNuance(word.spelling, word.meaningJa);
       ref.read(wordListProvider.notifier).updateWordDetails(word.id, coreNuance: explanation);
       if (mounted) {
@@ -285,6 +345,8 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
           _learningWords[_currentIndex] = word.copyWith(coreNuance: explanation);
         });
       }
+    } catch (e) {
+      explanation = "解説の取得に失敗しました。時間をおいて再度お試しください。";
     }
 
     setState(() {

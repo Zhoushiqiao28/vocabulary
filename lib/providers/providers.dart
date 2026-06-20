@@ -29,6 +29,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     List<String>? learnedDates,
     int? streakDays,
     DateTime? lastLearnedAt,
+    int? dailyTarget,
   }) async {
     state = state.copyWith(
       name: name,
@@ -38,6 +39,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       learnedDates: learnedDates,
       streakDays: streakDays,
       lastLearnedAt: lastLearnedAt,
+      dailyTarget: dailyTarget,
     );
     await _storage.saveProfile(state);
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:math';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../theme/app_theme.dart';
@@ -49,30 +50,34 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Top Header
-              _buildHeader(context, profile),
-              const SizedBox(height: 16),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Top Header
+                _buildHeader(context, profile),
+                const SizedBox(height: 16),
 
-              // Compact AI Message Banner
-              _buildAIMessageBanner(profile),
-              const SizedBox(height: 24),
+                // Motivating Status Panel (Daily Target Progress & Level XP)
+                _buildStatusAndGoalsPanel(context, profile, words),
+                const SizedBox(height: 16),
 
-              // HUGE main start card
-              Expanded(
-                flex: 4,
-                child: _buildMainStartCard(context, words.length),
-              ),
-              const SizedBox(height: 20),
+                // Compact AI Message Banner
+                _buildAIMessageBanner(profile),
+                const SizedBox(height: 20),
 
-              // Practice modes
-              Expanded(
-                flex: 4,
-                child: Column(
+                // HUGE main start card (with fixed height for scrollview stability)
+                SizedBox(
+                  height: 160,
+                  child: _buildMainStartCard(context, words.length),
+                ),
+                const SizedBox(height: 20),
+
+                // Practice modes
+                Column(
                   children: [
                     Row(
                       children: [
@@ -128,18 +133,213 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ),
 
-              // Bottom mini footer
-              _buildMiniFooter(masteredCount, words.length),
-            ],
+                const SizedBox(height: 16),
+
+                // Bottom mini footer
+                _buildMiniFooter(masteredCount, words.length),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  Widget _buildStatusAndGoalsPanel(BuildContext context, dynamic profile, List<Word> words) {
+    // 1. 今日のレビュー数
+    final now = DateTime.now();
+    final todayReviewedCount = words.where((w) {
+      if (w.reviewedAt == null) return false;
+      final d = w.reviewedAt!;
+      return d.year == now.year && d.month == now.month && d.day == now.day;
+    }).length;
+
+    final target = profile.dailyTarget;
+    final double goalProgress = target > 0 
+        ? (todayReviewedCount / target).clamp(0.0, 1.0) 
+        : 0.0;
+    final bool isGoalAchieved = todayReviewedCount >= target;
+
+    // 2. XP & レベル計算
+    final reviewedWords = words.where((w) => w.reviewedAt != null).length;
+    final masteredWords = words.where((w) => w.status == 1).length;
+    final int streak = profile.streakDays is int ? profile.streakDays : 0;
+    final int totalXp = (reviewedWords * 10) + (masteredWords * 20) + (streak * 50);
+    
+    final int level = (totalXp / 150).floor() + 1;
+    final int xpInCurrentLevel = totalXp % 150;
+    final double xpProgress = xpInCurrentLevel / 150.0;
+
+    String title = '駆け出しの暗記士';
+    if (level >= 15) {
+      title = '伝説の単語マスター 👑';
+    } else if (level >= 10) {
+      title = '英単語の守護者 🌟';
+    } else if (level >= 7) {
+      title = '上級暗記スペシャリスト';
+    } else if (level >= 5) {
+      title = '精鋭学習者';
+    } else if (level >= 3) {
+      title = '意欲的な挑戦者';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Row(
+        children: [
+          // 左側: 今日の目標プログレスリング
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 76,
+                height: 76,
+                child: ShaderMask(
+                  shaderCallback: (rect) {
+                    return SweepGradient(
+                      startAngle: 0.0,
+                      endAngle: pi * 2,
+                      colors: isGoalAchieved
+                          ? [Colors.amber, Colors.orangeAccent, Colors.amber]
+                          : [AppTheme.primary, Colors.blueAccent, AppTheme.primary],
+                      stops: const [0.0, 0.5, 1.0],
+                    ).createShader(rect);
+                  },
+                  child: CircularProgressIndicator(
+                    value: goalProgress == 0 ? 0.01 : goalProgress,
+                    strokeWidth: 6,
+                    backgroundColor: Colors.white.withOpacity(0.08),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isGoalAchieved)
+                    const Icon(Icons.emoji_events_rounded, color: Colors.amber, size: 20)
+                  else
+                    Text(
+                      '$todayReviewedCount',
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                  Text(
+                    '/$target語',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+          const SizedBox(width: 20),
+          
+          // 右側: レベルとXPプログレス
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // レベルと称号
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.secondary.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        'Lv. $level',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.secondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                
+                // XPバー
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      isGoalAchieved ? '目標達成！🎉' : '今日の学習進捗',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isGoalAchieved ? Colors.amber : AppTheme.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      '$xpInCurrentLevel / 150 XP',
+                      style: GoogleFonts.outfit(
+                        fontSize: 10,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: xpProgress,
+                    minHeight: 6,
+                    backgroundColor: Colors.white.withOpacity(0.05),
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                  ),
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context, dynamic profile) {
+    final now = DateTime.now();
+    final weekdays = ['月', '火', '水', '木', '金', '土', '日'];
+    final dateString = "${now.year}年${now.month}月${now.day}日(${weekdays[now.weekday - 1]})";
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -189,7 +389,16 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                )
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  dateString,
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
               ],
             ),
           ],
@@ -406,7 +615,7 @@ class DashboardScreen extends ConsumerWidget {
             style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
           ),
           Text(
-            'VocaBA v2.5',
+            'VocaBA v2.6',
             style: GoogleFonts.outfit(color: AppTheme.textSecondary.withOpacity(0.5), fontSize: 10),
           )
         ],

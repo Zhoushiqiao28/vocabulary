@@ -58,8 +58,6 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
     // We start week on Monday
     final offset = firstDayWeekday - 1;
     final totalCells = offset + daysInMonth;
-    final rowCount = (totalCells / 7).ceil();
-    final calendarHeight = rowCount * 44.0 + 40.0; // Dynamic height based on rows
 
     // Count learned days in this month
     int learnedInMonthCount = 0;
@@ -172,65 +170,63 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                 const SizedBox(height: 10),
 
                 // Days Grid
-                SizedBox(
-                  height: calendarHeight,
-                  child: GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
-                      mainAxisSpacing: 6,
-                      crossAxisSpacing: 6,
-                      childAspectRatio: 1,
-                    ),
-                    itemCount: totalCells,
-                    itemBuilder: (context, index) {
-                      if (index < offset) {
-                        return const SizedBox.shrink();
-                      }
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 7,
+                    mainAxisSpacing: 6,
+                    crossAxisSpacing: 6,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: totalCells,
+                  itemBuilder: (context, index) {
+                    if (index < offset) {
+                      return const SizedBox.shrink();
+                    }
 
-                      final day = index - offset + 1;
-                      final dateStr = "$_year-${_month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
-                      final isLearned = learnedDates.contains(dateStr);
-                      
-                      final now = DateTime.now();
-                      final isToday = now.year == _year && now.month == _month && now.day == day;
+                    final day = index - offset + 1;
+                    final dateStr = "$_year-${_month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
+                    final isLearned = learnedDates.contains(dateStr);
+                    
+                    final now = DateTime.now();
+                    final isToday = now.year == _year && now.month == _month && now.day == day;
 
-                      return Center(
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: isLearned
-                                ? const LinearGradient(
-                                    colors: [Colors.teal, Colors.tealAccent],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : null,
-                            border: isToday
-                                ? Border.all(color: AppTheme.primary, width: 2)
-                                : null,
-                            color: !isLearned && isToday
-                                ? AppTheme.primary.withOpacity(0.1)
-                                : Colors.transparent,
-                          ),
-                          child: Center(
-                            child: Text(
-                              day.toString(),
-                              style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                fontWeight: (isLearned || isToday) ? FontWeight.bold : FontWeight.normal,
-                                color: isLearned
-                                    ? Colors.black87
-                                    : (isToday ? AppTheme.primary : AppTheme.textPrimary),
-                              ),
+                    return Center(
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: isLearned
+                              ? const LinearGradient(
+                                  colors: [Colors.teal, Colors.tealAccent],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : null,
+                          border: isToday
+                              ? Border.all(color: AppTheme.primary, width: 2)
+                              : null,
+                          color: !isLearned && isToday
+                              ? AppTheme.primary.withOpacity(0.1)
+                              : Colors.transparent,
+                        ),
+                        child: Center(
+                          child: Text(
+                            day.toString(),
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: (isLearned || isToday) ? FontWeight.bold : FontWeight.normal,
+                              color: isLearned
+                                  ? Colors.black87
+                                  : (isToday ? AppTheme.primary : AppTheme.textPrimary),
                             ),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 20),
 

@@ -121,6 +121,7 @@ class UserProfile {
   final List<String> learnedDates;
   final int streakDays;
   final DateTime? lastLearnedAt;
+  final int dailyTarget;
 
   UserProfile({
     this.name = 'User',
@@ -130,6 +131,7 @@ class UserProfile {
     this.learnedDates = const [],
     this.streakDays = 0,
     this.lastLearnedAt,
+    this.dailyTarget = 10,
   });
 
   Map<String, dynamic> toJson() => {
@@ -140,6 +142,7 @@ class UserProfile {
         'learnedDates': learnedDates,
         'streakDays': streakDays,
         'lastLearnedAt': lastLearnedAt?.toIso8601String(),
+        'dailyTarget': dailyTarget,
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -152,6 +155,7 @@ class UserProfile {
         lastLearnedAt: json['lastLearnedAt'] != null
             ? DateTime.parse(json['lastLearnedAt'])
             : null,
+        dailyTarget: json['dailyTarget'] ?? 10,
       );
 
   UserProfile copyWith({
@@ -162,6 +166,7 @@ class UserProfile {
     List<String>? learnedDates,
     int? streakDays,
     DateTime? lastLearnedAt,
+    int? dailyTarget,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -171,6 +176,7 @@ class UserProfile {
       learnedDates: learnedDates ?? this.learnedDates,
       streakDays: streakDays ?? this.streakDays,
       lastLearnedAt: lastLearnedAt ?? this.lastLearnedAt,
+      dailyTarget: dailyTarget ?? this.dailyTarget,
     );
   }
 }

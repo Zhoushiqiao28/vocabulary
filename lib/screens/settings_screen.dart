@@ -18,6 +18,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isTesting = false;
   Map<String, dynamic>? _testResult;
   late String _selectedModel;
+  late int _dailyTarget;
 
   @override
   void initState() {
@@ -27,6 +28,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _keyController = TextEditingController(text: profile.apiKey);
     _interestController = TextEditingController(text: profile.interests.join(', '));
     _selectedModel = profile.geminiModel;
+    _dailyTarget = profile.dailyTarget;
   }
 
   @override
@@ -51,6 +53,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           apiKey: apiKey,
           interests: interests.isEmpty ? ['Technology'] : interests,
           geminiModel: _selectedModel,
+          dailyTarget: _dailyTarget,
         );
 
     if (mounted) {
@@ -121,6 +124,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: Icons.favorite_rounded,
                 helper: '※AIが例文を作る際、このテーマに基づいたストーリーを生成します。',
               ),
+              const SizedBox(height: 24),
+
+              // Daily Target Field
+              _buildTargetSlider(),
               const SizedBox(height: 48),
 
               // Save Button
@@ -150,6 +157,66 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTargetSlider() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '1日の目標単語数',
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '毎日の目標',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  ),
+                  Text(
+                    '$_dailyTarget 語',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.secondary,
+                    ),
+                  ),
+                ],
+              ),
+              Slider(
+                value: _dailyTarget.toDouble(),
+                min: 5,
+                max: 50,
+                divisions: 9, // 5, 10, 15, 20, 25, 30, 35, 40, 45, 50
+                label: '$_dailyTarget 語',
+                activeColor: AppTheme.primary,
+                inactiveColor: Colors.white10,
+                onChanged: (value) {
+                  setState(() {
+                    _dailyTarget = value.round();
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

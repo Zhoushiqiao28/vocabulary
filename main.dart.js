@@ -92595,7 +92595,7 @@ ed(a){return this.a0f(a)},
 a0f(a){var s=0,r=A.L(t.kj),q,p=2,o=[],n=this,m,l,k,j,i,h
 var $async$ed=A.M(function(b,c){if(b===1){o.push(c)
 s=p}for(;;)switch(s){case 0:p=4
-m=A.e7("https://corsproxy.io/?"+A.x9(2,a.b.k(0),B.a6,!1),0,null)
+m=A.e7("https://api.allorigins.win/raw?url="+A.x9(2,a.b.k(0),B.a6,!1),0,null)
 a.Mg()
 s=7
 return A.N(new A.oS(A.aGq(a.y,t.Cm)).KG(),$async$ed)

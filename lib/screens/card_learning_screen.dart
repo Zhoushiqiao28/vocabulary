@@ -742,35 +742,40 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
             ],
             const SizedBox(height: 24),
 
-            // AI interest sentence
+            // Contextual Example Box
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16.0),
-              decoration: AppTheme.glassBoxDecoration(color: AppTheme.secondary),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.02),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.04)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.auto_awesome_rounded, color: AppTheme.secondary, size: 14),
+                      const Icon(Icons.subject_rounded, color: AppTheme.textSecondary, size: 14),
                       const SizedBox(width: 6),
                       Text(
-                        'AI興味関心例文',
+                        'CONTEXTUAL EXAMPLE',
                         style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.secondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textSecondary,
+                          letterSpacing: 0.8,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   if (word.customExampleEn == null)
                     const Center(
                       child: SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.secondary),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
                       ),
                     )
                   else ...[

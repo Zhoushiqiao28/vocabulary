@@ -65,14 +65,10 @@ class DashboardScreen extends ConsumerWidget {
                 _buildStatusAndGoalsPanel(context, profile, words),
                 const SizedBox(height: 16),
 
-                // Compact AI Message Banner
-                _buildAIMessageBanner(profile),
-                const SizedBox(height: 20),
-
                 // HUGE main start card (with fixed height for scrollview stability)
                 SizedBox(
                   height: 160,
-                  child: _buildMainStartCard(context, words.length),
+                  child: _buildMainStartCard(context, words.length, profile),
                 ),
                 const SizedBox(height: 20),
 
@@ -429,103 +425,112 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAIMessageBanner(dynamic profile) {
-    final welcomeText = profile.apiKey.isEmpty
-        ? '⚠️ 右上からGemini APIキーを設定してください。モックモードで動作中。'
-        : '今日の暗記カードに「${profile.interests.first}」の例文を追加しました！さあ、始めましょう。';
+  Widget _buildMainStartCard(BuildContext context, int totalWordsCount, UserProfile profile) {
+    final interest = profile.interests.isNotEmpty ? profile.interests.first : '';
+    final hasKey = profile.apiKey.isNotEmpty;
+    final subText = hasKey && interest.isNotEmpty
+        ? 'あなたの興味（$interest）に基づいた例文で学習を開始'
+        : 'タップして表裏をめくり、スワイプで覚えたか分類';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: AppTheme.glassBoxDecoration(color: AppTheme.primary),
-      child: Row(
-        children: [
-          const Icon(Icons.auto_awesome_rounded, color: AppTheme.secondary, size: 16),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              welcomeText,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppTheme.textPrimary,
-                height: 1.3,
+    return Stack(
+      children: [
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppTheme.primary, Color(0xFF5A189A)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primary.withOpacity(0.3),
+                blurRadius: 15,
+                spreadRadius: 2,
+                offset: const Offset(0, 8),
+              )
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                _startLearning(
+                  context,
+                  totalWordsCount,
+                  isTest: false,
+                  isSpelling: false,
+                  screenBuilder: (config) => CardLearningScreen(config: config),
+                );
+              },
+              borderRadius: BorderRadius.circular(24),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Colors.white12,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.style_rounded, color: Colors.white, size: 32),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '暗記カード学習を開始',
+                      style: GoogleFonts.outfit(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMainStartCard(BuildContext context, int totalWordsCount) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.primary, Color(0xFF5A189A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 2,
-            offset: const Offset(0, 8),
-          )
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            _startLearning(
-              context,
-              totalWordsCount,
-              isTest: false,
-              isSpelling: false,
-              screenBuilder: (config) => CardLearningScreen(config: config),
-            );
-          },
-          borderRadius: BorderRadius.circular(24),
-          child: Padding(
-            padding: const EdgeInsets.all(28.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: Colors.white12,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.style_rounded, color: Colors.white, size: 36),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '暗記カード学習を開始',
-                  style: GoogleFonts.outfit(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'タップして表裏をめくり、スワイプで覚えたか分類',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.7),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
             ),
           ),
         ),
-      ),
+        if (!hasKey)
+          Positioned(
+            top: 14,
+            right: 14,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 10),
+                  const SizedBox(width: 4),
+                  Text(
+                    'モック動作中',
+                    style: GoogleFonts.outfit(
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 

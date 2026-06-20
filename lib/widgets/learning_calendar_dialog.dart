@@ -75,6 +75,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Container(
+        constraints: const BoxConstraints(maxWidth: 380),
         decoration: BoxDecoration(
           color: AppTheme.surface.withOpacity(0.95),
           borderRadius: BorderRadius.circular(28),

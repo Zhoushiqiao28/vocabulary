@@ -6,12 +6,14 @@ import '../models/models.dart';
 
 class GeminiService {
   final String _apiKey;
+  final String _modelName;
   GenerativeModel? _model;
 
-  GeminiService(this._apiKey) {
+  GeminiService(this._apiKey, {String modelName = 'gemini-2.5-flash'})
+      : _modelName = modelName.isNotEmpty ? modelName : 'gemini-2.5-flash' {
     if (_apiKey.isNotEmpty) {
       _model = GenerativeModel(
-        model: 'gemini-1.5-flash',
+        model: _modelName,
         apiKey: _apiKey,
         generationConfig: GenerationConfig(
           responseMimeType: 'application/json',
@@ -80,7 +82,7 @@ Keep it concise and beautiful for a mobile app card detail. Do not return JSON, 
 
     try {
       final plainModel = GenerativeModel(
-        model: 'gemini-1.5-flash',
+        model: _modelName,
         apiKey: _apiKey,
         httpClient: CorsProxyClient(),
       );
@@ -216,10 +218,29 @@ Respond in JSON format:
         
         final hasFlash = modelNames.any((name) => name.contains('gemini-1.5-flash'));
         
+        // Determine the best available model for general content generation
+        String bestModel = 'gemini-2.5-flash';
+        final normalizedNames = modelNames.map((e) => e.replaceFirst('models/', '')).toList();
+        
+        if (normalizedNames.contains('gemini-2.5-flash')) {
+          bestModel = 'gemini-2.5-flash';
+        } else if (normalizedNames.contains('gemini-2.0-flash')) {
+          bestModel = 'gemini-2.0-flash';
+        } else if (normalizedNames.contains('gemini-1.5-flash')) {
+          bestModel = 'gemini-1.5-flash';
+        } else {
+          final flashModel = normalizedNames.firstWhere(
+            (m) => m.toLowerCase().contains('flash'),
+            orElse: () => normalizedNames.isNotEmpty ? normalizedNames.first : 'gemini-2.5-flash',
+          );
+          bestModel = flashModel;
+        }
+        
         return {
           'success': true,
           'models': modelNames,
           'hasFlash': hasFlash,
+          'bestModel': bestModel,
           'message': '接続成功！利用可能なモデルが見つかりました。',
           'advice': 'APIキーは正常に動作しています。AI機能を利用可能です。',
         };

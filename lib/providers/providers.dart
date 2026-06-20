@@ -25,6 +25,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     String? name,
     List<String>? interests,
     String? apiKey,
+    String? geminiModel,
     int? streakDays,
     DateTime? lastLearnedAt,
   }) async {
@@ -32,6 +33,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       name: name,
       interests: interests,
       apiKey: apiKey,
+      geminiModel: geminiModel,
       streakDays: streakDays,
       lastLearnedAt: lastLearnedAt,
     );
@@ -47,7 +49,7 @@ final userProfileProvider = StateNotifierProvider<UserProfileNotifier, UserProfi
 // 4. GeminiService Provider
 final geminiServiceProvider = Provider<GeminiService>((ref) {
   final profile = ref.watch(userProfileProvider);
-  return GeminiService(profile.apiKey);
+  return GeminiService(profile.apiKey, modelName: profile.geminiModel);
 });
 
 // 5. WordList Provider (StateNotifier)

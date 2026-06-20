@@ -17,6 +17,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _interestController;
   bool _isTesting = false;
   Map<String, dynamic>? _testResult;
+  late String _selectedModel;
 
   @override
   void initState() {
@@ -25,6 +26,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _nameController = TextEditingController(text: profile.name);
     _keyController = TextEditingController(text: profile.apiKey);
     _interestController = TextEditingController(text: profile.interests.join(', '));
+    _selectedModel = profile.geminiModel;
   }
 
   @override
@@ -48,6 +50,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           name: name.isEmpty ? 'User' : name,
           apiKey: apiKey,
           interests: interests.isEmpty ? ['Technology'] : interests,
+          geminiModel: _selectedModel,
         );
 
     if (mounted) {
@@ -164,6 +167,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       setState(() {
         _isTesting = false;
         _testResult = result;
+        if (result['success'] == true && result['bestModel'] != null) {
+          _selectedModel = result['bestModel'];
+        }
       });
     }
   }
@@ -254,6 +260,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (_testResult!['success'] == true && _testResult!['bestModel'] != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    '💡 会話や例文生成には、お使いのキーで利用可能な最新モデル「${_testResult!['bestModel']}」が自動選択され、設定保存時に適用されます。',
+                    style: const TextStyle(
+                      color: AppTheme.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
                 if (_testResult!['advice'] != null) ...[
                   const SizedBox(height: 8),
                   Text(

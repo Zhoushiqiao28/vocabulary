@@ -52,6 +52,8 @@ class Word {
       );
 
   Word copyWith({
+    String? spelling,
+    String? meaningJa,
     int? status,
     String? coreNuance,
     String? customExampleEn,
@@ -62,8 +64,8 @@ class Word {
   }) {
     return Word(
       id: id,
-      spelling: spelling,
-      meaningJa: meaningJa,
+      spelling: spelling ?? this.spelling,
+      meaningJa: meaningJa ?? this.meaningJa,
       coreNuance: coreNuance ?? this.coreNuance,
       status: status ?? this.status,
       customExampleEn: customExampleEn ?? this.customExampleEn,

@@ -193,6 +193,74 @@ Respond in JSON format:
       return [];
     }
   }
+
+  // 5. Test Connection to Gemini API
+  Future<Map<String, dynamic>> testConnection(String apiKey) async {
+    if (apiKey.isEmpty) {
+      return {
+        'success': false,
+        'message': 'APIキーが入力されていません。',
+        'advice': '設定画面のAPIキー入力欄に有効なキーを入力してください。'
+      };
+    }
+
+    final client = CorsProxyClient();
+    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey');
+
+    try {
+      final response = await client.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> modelsList = data['models'] ?? [];
+        final modelNames = modelsList.map((m) => m['name'] as String).toList();
+        
+        final hasFlash = modelNames.any((name) => name.contains('gemini-1.5-flash'));
+        
+        return {
+          'success': true,
+          'models': modelNames,
+          'hasFlash': hasFlash,
+          'message': '接続成功！利用可能なモデルが見つかりました。',
+          'advice': 'APIキーは正常に動作しています。AI機能を利用可能です。',
+        };
+      } else {
+        String errorMsg = 'HTTP ${response.statusCode}';
+        String advice = 'APIキーが正しくないか、Google AI Studioの設定に問題があります。';
+        
+        try {
+          final errorData = jsonDecode(response.body);
+          if (errorData['error'] != null) {
+            final innerError = errorData['error'];
+            errorMsg = innerError['message'] ?? errorMsg;
+            final status = innerError['status'] ?? '';
+            
+            if (status == 'INVALID_ARGUMENT' || errorMsg.contains('API key not valid')) {
+              advice = 'APIキーが無効です。コピー＆ペーストの際に余分なスペースや文字が入っていないか、または新しくキーを作成し直してください。';
+            } else if (status == 'PERMISSION_DENIED') {
+              if (errorMsg.contains('disabled') || errorMsg.contains('Generative Language API')) {
+                advice = 'GCPプロジェクトで「Generative Language API」が有効になっていません。Google AI Studio (https://aistudio.google.com/) で「Create API Key in new project」を選択して新しいキーを作成するか、Google Cloud ConsoleでAPIを有効にしてください。';
+              } else {
+                advice = 'アクセス権限がありません。APIキーの制限設定（IP制限やAPI制限）を確認してください。';
+              }
+            }
+          }
+        } catch (_) {}
+        
+        return {
+          'success': false,
+          'message': '接続失敗: $errorMsg',
+          'advice': advice,
+          'rawBody': response.body,
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '通信エラー: ${e.toString()}',
+        'advice': 'ネットワーク接続を確認するか、CORSプロキシサーバーの一時的な障害の可能性があります。',
+      };
+    }
+  }
 }
 
 // Custom HTTP Client to proxy request in web to bypass CORS limitations

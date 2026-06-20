@@ -15,6 +15,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _nameController;
   late TextEditingController _keyController;
   late TextEditingController _interestController;
+  bool _isTesting = false;
+  Map<String, dynamic>? _testResult;
 
   @override
   void initState() {
@@ -104,6 +106,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 isPassword: true,
                 helper: '※入力されたAPIキーはご自身の端末に安全に保存されます。キーがない場合はモックデータで動作します。',
               ),
+              const SizedBox(height: 12),
+              _buildConnectionTestWidget(),
               const SizedBox(height: 24),
 
               // Interests Field
@@ -143,6 +147,168 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _runConnectionTest() async {
+    final key = _keyController.text.trim();
+    setState(() {
+      _isTesting = true;
+      _testResult = null;
+    });
+
+    final geminiService = ref.read(geminiServiceProvider);
+    final result = await geminiService.testConnection(key);
+
+    if (mounted) {
+      setState(() {
+        _isTesting = false;
+        _testResult = result;
+      });
+    }
+  }
+
+  Widget _buildConnectionTestWidget() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            ElevatedButton.icon(
+              onPressed: _isTesting ? null : _runConnectionTest,
+              icon: _isTesting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.flash_on_rounded, size: 18),
+              label: Text(_isTesting ? 'テスト中...' : 'APIキー接続テスト'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.secondary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (!_isTesting && _testResult == null)
+              Text(
+                '接続状況を確認できます',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+          ],
+        ),
+        if (_testResult != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _testResult!['success'] == true
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _testResult!['success'] == true
+                    ? Colors.green.withOpacity(0.3)
+                    : Colors.red.withOpacity(0.3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      _testResult!['success'] == true
+                          ? Icons.check_circle_rounded
+                          : Icons.error_rounded,
+                      color: _testResult!['success'] == true ? Colors.green : Colors.red,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _testResult!['success'] == true ? '接続成功！' : '接続失敗',
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: _testResult!['success'] == true ? Colors.green : Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _testResult!['message'] ?? '',
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (_testResult!['advice'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '【アドバイス】\n${_testResult!['advice']}',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+                if (_testResult!['models'] != null && (_testResult!['models'] as List).isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    '利用可能なモデル:',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: (_testResult!['models'] as List).map((m) {
+                      final modelStr = m.toString();
+                      final shortName = modelStr.replaceFirst('models/', '');
+                      final isFlash = shortName.contains('gemini-1.5-flash');
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isFlash ? AppTheme.primary.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isFlash ? AppTheme.primary.withOpacity(0.4) : Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                        child: Text(
+                          shortName,
+                          style: TextStyle(
+                            color: isFlash ? AppTheme.primary : AppTheme.textSecondary,
+                            fontSize: 10,
+                            fontWeight: isFlash ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 

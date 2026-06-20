@@ -200,19 +200,27 @@ class CorsProxyClient extends http.BaseClient {
   final http.Client _inner = http.Client();
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
     if (kIsWeb) {
-      final proxyUrl = Uri.parse('https://corsproxy.io/?${Uri.encodeComponent(request.url.toString())}');
-      final newRequest = http.StreamedRequest(request.method, proxyUrl);
-      newRequest.headers.addAll(request.headers);
-      
-      request.finalize().listen(
-        newRequest.sink.add,
-        onError: newRequest.sink.addError,
-        onDone: newRequest.sink.close,
-        cancelOnError: true,
-      );
-      return _inner.send(newRequest);
+      try {
+        final proxyUrl = Uri.parse('https://corsproxy.io/?${Uri.encodeComponent(request.url.toString())}');
+        
+        // Read body to bytes to avoid chunked transfer issues on Web
+        final bytes = await request.finalize().toBytes();
+        
+        final newRequest = http.Request(request.method, proxyUrl);
+        newRequest.headers.addAll(request.headers);
+        
+        // Host header must be removed/rewritten for the proxy, otherwise it rejects
+        newRequest.headers.remove('host');
+        newRequest.headers.remove('Host');
+        
+        newRequest.bodyBytes = bytes;
+        return await _inner.send(newRequest);
+      } catch (e) {
+        // Fallback to direct request if proxy fails to construct
+        return _inner.send(request);
+      }
     }
     return _inner.send(request);
   }

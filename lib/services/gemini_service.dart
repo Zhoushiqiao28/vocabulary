@@ -57,8 +57,8 @@ Generate a JSON object with the following structure:
       };
     } catch (e) {
       return {
-        'sentence_en': 'Failed to generate example due to network error.',
-        'sentence_ja': 'ネットワークエラーのため例文を生成できませんでした。'
+        'sentence_en': 'API Error: ${e.toString()}',
+        'sentence_ja': '例文の生成に失敗しました。APIキーの有効性や、利用制限エラー、ネットワーク環境を確認してください。'
       };
     }
   }
@@ -88,7 +88,7 @@ Keep it concise and beautiful for a mobile app card detail. Do not return JSON, 
       final response = await plainModel.generateContent(content);
       return response.text ?? '解説を生成できませんでした。';
     } catch (e) {
-      return 'エラーが発生したため、ニュアンス解説を読み込めませんでした。';
+      return 'エラーが発生したため、ニュアンス解説を読み込めませんでした。詳細: ${e.toString()}';
     }
   }
 
@@ -145,7 +145,7 @@ Analyze the User's latest input. Respond in JSON format:
       return jsonDecode(response.text ?? '{}');
     } catch (e) {
       return {
-        'ai_reply': 'Sorry, I had trouble processing that message. Could you say it again?',
+        'ai_reply': 'Sorry, I had trouble processing that message. Error: ${e.toString()}',
         'needs_correction': false,
         'corrected_text': null,
         'explanation': null,

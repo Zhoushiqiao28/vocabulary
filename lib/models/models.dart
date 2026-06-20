@@ -7,6 +7,8 @@ class Word {
   String? customExampleEn;
   String? customExampleJa;
   DateTime? reviewedAt;
+  bool isFavorite;
+  final bool isSystem;
 
   Word({
     required this.id,
@@ -17,6 +19,8 @@ class Word {
     this.customExampleEn,
     this.customExampleJa,
     this.reviewedAt,
+    this.isFavorite = false,
+    this.isSystem = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +32,8 @@ class Word {
         'customExampleEn': customExampleEn,
         'customExampleJa': customExampleJa,
         'reviewedAt': reviewedAt?.toIso8601String(),
+        'isFavorite': isFavorite,
+        'isSystem': isSystem,
       };
 
   factory Word.fromJson(Map<String, dynamic> json) => Word(
@@ -41,6 +47,8 @@ class Word {
         reviewedAt: json['reviewedAt'] != null
             ? DateTime.parse(json['reviewedAt'])
             : null,
+        isFavorite: json['isFavorite'] ?? false,
+        isSystem: json['isSystem'] ?? false,
       );
 
   Word copyWith({
@@ -49,6 +57,8 @@ class Word {
     String? customExampleEn,
     String? customExampleJa,
     DateTime? reviewedAt,
+    bool? isFavorite,
+    bool? isSystem,
   }) {
     return Word(
       id: id,
@@ -59,6 +69,8 @@ class Word {
       customExampleEn: customExampleEn ?? this.customExampleEn,
       customExampleJa: customExampleJa ?? this.customExampleJa,
       reviewedAt: reviewedAt ?? this.reviewedAt,
+      isFavorite: isFavorite ?? this.isFavorite,
+      isSystem: isSystem ?? this.isSystem,
     );
   }
 }
@@ -145,6 +157,46 @@ class UserProfile {
       apiKey: apiKey ?? this.apiKey,
       streakDays: streakDays ?? this.streakDays,
       lastLearnedAt: lastLearnedAt ?? this.lastLearnedAt,
+    );
+  }
+}
+
+enum LanguageDirection { enToJa, jaToEn }
+enum RangeType { all, weak, favorites, unlearned, mastered, customRange }
+enum OrderType { random, idOrder, alphabetical }
+
+class LearningConfig {
+  final LanguageDirection direction;
+  final RangeType rangeType;
+  final OrderType orderType;
+  final int startId;
+  final int endId;
+  final int questionCount; // For tests
+
+  LearningConfig({
+    this.direction = LanguageDirection.enToJa,
+    this.rangeType = RangeType.all,
+    this.orderType = OrderType.random,
+    this.startId = 1,
+    this.endId = 100,
+    this.questionCount = 10,
+  });
+
+  LearningConfig copyWith({
+    LanguageDirection? direction,
+    RangeType? rangeType,
+    OrderType? orderType,
+    int? startId,
+    int? endId,
+    int? questionCount,
+  }) {
+    return LearningConfig(
+      direction: direction ?? this.direction,
+      rangeType: rangeType ?? this.rangeType,
+      orderType: orderType ?? this.orderType,
+      startId: startId ?? this.startId,
+      endId: endId ?? this.endId,
+      questionCount: questionCount ?? this.questionCount,
     );
   }
 }

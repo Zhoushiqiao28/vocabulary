@@ -78,18 +78,61 @@ class WordListNotifier extends StateNotifier<List<Word>> {
     state = [
       for (final word in state)
         if (word.id == wordId)
-          Word(
-            id: word.id,
-            spelling: word.spelling,
-            meaningJa: word.meaningJa,
-            status: word.status,
-            reviewedAt: word.reviewedAt,
-            coreNuance: coreNuance ?? word.coreNuance,
-            customExampleEn: customExampleEn ?? word.customExampleEn,
-            customExampleJa: customExampleJa ?? word.customExampleJa,
+          word.copyWith(
+            coreNuance: coreNuance,
+            customExampleEn: customExampleEn,
+            customExampleJa: customExampleJa,
           )
         else
           word
+    ];
+    await _storage.saveWords(state);
+  }
+
+  Future<void> toggleFavorite(int wordId) async {
+    state = [
+      for (final word in state)
+        if (word.id == wordId)
+          word.copyWith(isFavorite: !word.isFavorite)
+        else
+          word
+    ];
+    await _storage.saveWords(state);
+  }
+
+  Future<void> addWord(String spelling, String meaningJa, String? coreNuance) async {
+    final nextId = state.isEmpty ? 1 : state.map((e) => e.id).reduce((a, b) => a > b ? a : b) + 1;
+    final newWord = Word(
+      id: nextId,
+      spelling: spelling,
+      meaningJa: meaningJa,
+      coreNuance: coreNuance,
+      status: 0,
+      isSystem: false,
+    );
+    state = [newWord, ...state];
+    await _storage.saveWords(state);
+  }
+
+  Future<void> editWord(int wordId, String spelling, String meaningJa, String? coreNuance) async {
+    state = [
+      for (final word in state)
+        if (word.id == wordId && !word.isSystem)
+          word.copyWith(
+            spelling: spelling,
+            meaningJa: meaningJa,
+            coreNuance: coreNuance,
+          )
+        else
+          word
+    ];
+    await _storage.saveWords(state);
+  }
+
+  Future<void> deleteWord(int wordId) async {
+    state = [
+      for (final word in state)
+        if (word.id != wordId || word.isSystem) word
     ];
     await _storage.saveWords(state);
   }
@@ -111,6 +154,7 @@ class WordListNotifier extends StateNotifier<List<Word>> {
           spelling: spelling,
           meaningJa: meaningJa,
           status: 0,
+          isSystem: false,
         ));
       }
     }

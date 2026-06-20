@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'dart:math';
 import '../models/models.dart';
 import '../providers/providers.dart';
@@ -9,7 +10,8 @@ import '../theme/app_theme.dart';
 import 'settings_screen.dart';
 
 class CardLearningScreen extends ConsumerStatefulWidget {
-  const CardLearningScreen({super.key});
+  final LearningConfig config;
+  const CardLearningScreen({super.key, required this.config});
 
   @override
   ConsumerState<CardLearningScreen> createState() => _CardLearningScreenState();
@@ -40,9 +42,13 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
   // AI Loadings
   bool _isAILoading = false;
 
+  // TTS
+  final FlutterTts _flutterTts = FlutterTts();
+
   @override
   void initState() {
     super.initState();
+    _initTts();
     _swipeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -60,15 +66,59 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
     _initWords();
   }
 
+  Future<void> _initTts() async {
+    await _flutterTts.setLanguage("en-US");
+    await _flutterTts.setSpeechRate(0.45);
+  }
+
+  Future<void> _speak(String text) async {
+    await _flutterTts.speak(text);
+  }
+
   Future<void> _initWords() async {
     final words = ref.read(wordListProvider);
-    final notMastered = words.where((e) => e.status != 1).toList();
-    if (notMastered.isEmpty) {
-      _learningWords = words.take(10).toList();
-    } else {
-      notMastered.shuffle();
-      _learningWords = notMastered.take(10).toList();
+    List<Word> filtered = [];
+
+    // Apply Range Filter
+    switch (widget.config.rangeType) {
+      case RangeType.all:
+        filtered = List<Word>.from(words);
+        break;
+      case RangeType.weak:
+        filtered = words.where((e) => e.status == 2).toList();
+        break;
+      case RangeType.favorites:
+        filtered = words.where((e) => e.isFavorite).toList();
+        break;
+      case RangeType.unlearned:
+        filtered = words.where((e) => e.status == 0).toList();
+        break;
+      case RangeType.mastered:
+        filtered = words.where((e) => e.status == 1).toList();
+        break;
+      case RangeType.customRange:
+        filtered = words
+            .where((e) => e.id >= widget.config.startId && e.id <= widget.config.endId)
+            .toList();
+        break;
     }
+
+    // Apply Sorting
+    switch (widget.config.orderType) {
+      case OrderType.random:
+        filtered.shuffle();
+        break;
+      case OrderType.idOrder:
+        filtered.sort((a, b) => a.id.compareTo(b.id));
+        break;
+      case OrderType.alphabetical:
+        filtered.sort((a, b) => a.spelling.toLowerCase().compareTo(b.spelling.toLowerCase()));
+        break;
+    }
+
+    // Apply Limit
+    final limit = widget.config.questionCount == 9999 ? filtered.length : widget.config.questionCount;
+    _learningWords = filtered.take(limit).toList();
 
     setState(() {
       _isLoading = false;
@@ -124,6 +174,7 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
 
   @override
   void dispose() {
+    _flutterTts.stop();
     _swipeController.dispose();
     _flipController.dispose();
     super.dispose();
@@ -522,17 +573,41 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (isFront) ...[
-            // Front side: Just the English word
-            Text(
-              word.spelling,
-              style: GoogleFonts.outfit(
-                fontSize: 38,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-                letterSpacing: 0.5,
+            // Front side: English word OR Japanese meaning
+            if (widget.config.direction == LanguageDirection.enToJa) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      word.spelling,
+                      style: GoogleFonts.outfit(
+                        fontSize: 34,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                        letterSpacing: 0.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.volume_up_rounded, size: 28, color: AppTheme.secondary),
+                    onPressed: () => _speak(word.spelling),
+                    tooltip: '発音を聞く',
+                  ),
+                ],
               ),
-              textAlign: TextAlign.center,
-            ),
+            ] else ...[
+              Text(
+                word.meaningJa,
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -546,25 +621,58 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
               ),
             )
           ] else ...[
-            // Back side: Japanese, Core Nuance, AI Example
-            Text(
-              word.spelling,
-              style: GoogleFonts.outfit(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textSecondary,
+            // Back side: Japanese (enToJa) OR English (jaToEn), Core Nuance, AI Example
+            if (widget.config.direction == LanguageDirection.enToJa) ...[
+              Text(
+                word.spelling,
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textSecondary,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              word.meaningJa,
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
+              const SizedBox(height: 6),
+              Text(
+                word.meaningJa,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
+            ] else ...[
+              Text(
+                word.meaningJa,
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: AppTheme.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      word.spelling,
+                      style: GoogleFonts.outfit(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.volume_up_rounded, size: 24, color: AppTheme.secondary),
+                    onPressed: () => _speak(word.spelling),
+                    tooltip: '発音を聞く',
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 24),
 
             // AI interest sentence

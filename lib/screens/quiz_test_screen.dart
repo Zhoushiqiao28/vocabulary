@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'dart:math';
 import 'dart:async';
 import '../models/models.dart';
@@ -9,7 +10,8 @@ import '../providers/providers.dart';
 import '../theme/app_theme.dart';
 
 class QuizTestScreen extends ConsumerStatefulWidget {
-  const QuizTestScreen({super.key});
+  final LearningConfig config;
+  const QuizTestScreen({super.key, required this.config});
 
   @override
   ConsumerState<QuizTestScreen> createState() => _QuizTestScreenState();
@@ -30,19 +32,33 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
   final FocusNode _keyboardFocusNode = FocusNode();
   Timer? _transitionTimer;
 
+  // TTS
+  final FlutterTts _flutterTts = FlutterTts();
+
   @override
   void initState() {
     super.initState();
+    _initTts();
     _generateQuiz();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _keyboardFocusNode.requestFocus();
     });
   }
 
+  Future<void> _initTts() async {
+    await _flutterTts.setLanguage("en-US");
+    await _flutterTts.setSpeechRate(0.45);
+  }
+
+  Future<void> _speak(String text) async {
+    await _flutterTts.speak(text);
+  }
+
   @override
   void dispose() {
     _keyboardFocusNode.dispose();
     _transitionTimer?.cancel();
+    _flutterTts.stop();
     super.dispose();
   }
 
@@ -55,14 +71,62 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
       return;
     }
 
-    final shuffled = List<Word>.from(allWords)..shuffle();
-    _quizWords = shuffled.take(10).toList();
+    List<Word> filtered = [];
+    switch (widget.config.rangeType) {
+      case RangeType.all:
+        filtered = List<Word>.from(allWords);
+        break;
+      case RangeType.weak:
+        filtered = allWords.where((e) => e.status == 2).toList();
+        break;
+      case RangeType.favorites:
+        filtered = allWords.where((e) => e.isFavorite).toList();
+        break;
+      case RangeType.unlearned:
+        filtered = allWords.where((e) => e.status == 0).toList();
+        break;
+      case RangeType.mastered:
+        filtered = allWords.where((e) => e.status == 1).toList();
+        break;
+      case RangeType.customRange:
+        filtered = allWords
+            .where((e) => e.id >= widget.config.startId && e.id <= widget.config.endId)
+            .toList();
+        break;
+    }
+
+    if (filtered.isEmpty) {
+      setState(() {
+        _quizWords = [];
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // Apply Sorting
+    switch (widget.config.orderType) {
+      case OrderType.random:
+        filtered.shuffle();
+        break;
+      case OrderType.idOrder:
+        filtered.sort((a, b) => a.id.compareTo(b.id));
+        break;
+      case OrderType.alphabetical:
+        filtered.sort((a, b) => a.spelling.toLowerCase().compareTo(b.spelling.toLowerCase()));
+        break;
+    }
+
+    // Limit count
+    final limit = widget.config.questionCount == 9999 ? filtered.length : widget.config.questionCount;
+    _quizWords = filtered.take(limit).toList();
 
     setState(() {
       _isLoading = false;
     });
 
-    _loadQuestion();
+    if (_quizWords.isNotEmpty) {
+      _loadQuestion();
+    }
   }
 
   void _loadQuestion() {
@@ -71,13 +135,15 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
     final targetWord = _quizWords[_currentIndex];
     final allWords = ref.read(wordListProvider);
 
-    final options = <String>{targetWord.meaningJa};
+    final isEnToJa = widget.config.direction == LanguageDirection.enToJa;
+    final targetValue = isEnToJa ? targetWord.meaningJa : targetWord.spelling;
+    final options = <String>{targetValue};
     final random = Random();
 
     while (options.length < 4) {
       final randomWord = allWords[random.nextInt(allWords.length)];
-      if (randomWord.spelling != targetWord.spelling) {
-        options.add(randomWord.meaningJa);
+      if (randomWord.id != targetWord.id) {
+        options.add(isEnToJa ? randomWord.meaningJa : randomWord.spelling);
       }
     }
 
@@ -92,13 +158,23 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
         _keyboardFocusNode.requestFocus();
       }
     });
+
+    // Auto speak the word if direction is EN->JP
+    if (isEnToJa) {
+      _speak(targetWord.spelling);
+    }
   }
 
   void _answer(String option) {
     if (_hasAnswered) return;
 
     final targetWord = _quizWords[_currentIndex];
-    final isCorrect = option == targetWord.meaningJa;
+    final isEnToJa = widget.config.direction == LanguageDirection.enToJa;
+    final correctAnswer = isEnToJa ? targetWord.meaningJa : targetWord.spelling;
+    final isCorrect = option == correctAnswer;
+
+    // Auto speak the word on answer (especially for JA->EN)
+    _speak(targetWord.spelling);
 
     setState(() {
       _selectedOption = option;
@@ -114,7 +190,7 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
       }
     });
 
-    _transitionTimer = Timer(const Duration(milliseconds: 1500), () {
+    _transitionTimer = Timer(const Duration(milliseconds: 1800), () {
       if (mounted) {
         _nextQuestion();
       }
@@ -137,13 +213,15 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final allWords = ref.watch(wordListProvider);
+
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
       );
     }
 
-    if (_quizWords.length < 4) {
+    if (allWords.length < 4) {
       return Scaffold(
         appBar: AppBar(title: const Text('択一クイズ')),
         body: const Center(
@@ -158,11 +236,28 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
       );
     }
 
+    if (_quizWords.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('択一クイズ')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Text(
+              '出題条件に該当する単語が見つかりませんでした。\n範囲設定を見直してください。',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     if (_currentIndex >= _quizWords.length) {
       return _buildFinishedScreen();
     }
 
     final targetWord = _quizWords[_currentIndex];
+    final isEnToJa = widget.config.direction == LanguageDirection.enToJa;
+    final questionText = isEnToJa ? targetWord.spelling : targetWord.meaningJa;
 
     return KeyboardListener(
       focusNode: _keyboardFocusNode,
@@ -207,14 +302,29 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(color: Colors.white.withOpacity(0.05)),
                     ),
-                    child: Text(
-                      targetWord.spelling,
-                      style: GoogleFonts.outfit(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            questionText,
+                            style: GoogleFonts.outfit(
+                              fontSize: isEnToJa ? 38 : 28,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textPrimary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        if (isEnToJa) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.volume_up_rounded, size: 30, color: AppTheme.secondary),
+                            onPressed: () => _speak(targetWord.spelling),
+                            tooltip: '発音を聞く',
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),
@@ -226,7 +336,7 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: _currentOptions.map((option) {
                       final isSelected = _selectedOption == option;
-                      final isCorrectOption = option == targetWord.meaningJa;
+                      final isCorrectOption = option == (isEnToJa ? targetWord.meaningJa : targetWord.spelling);
                       
                       Color cardColor = AppTheme.surface;
                       Color borderColor = Colors.white.withOpacity(0.05);

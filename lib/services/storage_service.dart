@@ -50,6 +50,7 @@ class StorageService {
           spelling: e['spelling'],
           meaningJa: e['meaning_ja'], // matching python format key name
           status: 0,
+          isSystem: true,
         ));
       }
       await saveWords(words); // Cache into SharedPreferences
@@ -57,8 +58,8 @@ class StorageService {
     } catch (e) {
       // Fallback
       return [
-        Word(id: 1, spelling: 'follow', meaningJa: '〜の後に続く、〜に従う'),
-        Word(id: 2, spelling: 'consider', meaningJa: '〜を考慮する'),
+        Word(id: 1, spelling: 'follow', meaningJa: '〜の後に続く、〜に従う', isSystem: true),
+        Word(id: 2, spelling: 'consider', meaningJa: '〜を考慮する', isSystem: true),
       ];
     }
   }

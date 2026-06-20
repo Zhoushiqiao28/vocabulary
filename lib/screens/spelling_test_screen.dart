@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'dart:async';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../theme/app_theme.dart';
 
 class SpellingTestScreen extends ConsumerStatefulWidget {
-  const SpellingTestScreen({super.key});
+  final LearningConfig config;
+  const SpellingTestScreen({super.key, required this.config});
 
   @override
   ConsumerState<SpellingTestScreen> createState() => _SpellingTestScreenState();
@@ -31,10 +33,23 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
   int _score = 0;
   List<Word> _wrongWords = [];
 
+  // TTS
+  final FlutterTts _flutterTts = FlutterTts();
+
   @override
   void initState() {
     super.initState();
+    _initTts();
     _generateTest();
+  }
+
+  Future<void> _initTts() async {
+    await _flutterTts.setLanguage("en-US");
+    await _flutterTts.setSpeechRate(0.45);
+  }
+
+  Future<void> _speak(String text) async {
+    await _flutterTts.speak(text);
   }
 
   @override
@@ -43,6 +58,7 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
     _focusNode.dispose();
     _keyboardFocusNode.dispose();
     _transitionTimer?.cancel();
+    _flutterTts.stop();
     super.dispose();
   }
 
@@ -55,14 +71,62 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
       return;
     }
 
-    final shuffled = List<Word>.from(allWords)..shuffle();
-    _testWords = shuffled.take(10).toList();
+    List<Word> filtered = [];
+    switch (widget.config.rangeType) {
+      case RangeType.all:
+        filtered = List<Word>.from(allWords);
+        break;
+      case RangeType.weak:
+        filtered = allWords.where((e) => e.status == 2).toList();
+        break;
+      case RangeType.favorites:
+        filtered = allWords.where((e) => e.isFavorite).toList();
+        break;
+      case RangeType.unlearned:
+        filtered = allWords.where((e) => e.status == 0).toList();
+        break;
+      case RangeType.mastered:
+        filtered = allWords.where((e) => e.status == 1).toList();
+        break;
+      case RangeType.customRange:
+        filtered = allWords
+            .where((e) => e.id >= widget.config.startId && e.id <= widget.config.endId)
+            .toList();
+        break;
+    }
+
+    if (filtered.isEmpty) {
+      setState(() {
+        _testWords = [];
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // Apply Sorting
+    switch (widget.config.orderType) {
+      case OrderType.random:
+        filtered.shuffle();
+        break;
+      case OrderType.idOrder:
+        filtered.sort((a, b) => a.id.compareTo(b.id));
+        break;
+      case OrderType.alphabetical:
+        filtered.sort((a, b) => a.spelling.toLowerCase().compareTo(b.spelling.toLowerCase()));
+        break;
+    }
+
+    // Limit count
+    final limit = widget.config.questionCount == 9999 ? filtered.length : widget.config.questionCount;
+    _testWords = filtered.take(limit).toList();
 
     setState(() {
       _isLoading = false;
     });
 
-    _loadQuestion();
+    if (_testWords.isNotEmpty) {
+      _loadQuestion();
+    }
   }
 
   void _loadQuestion() {
@@ -87,6 +151,9 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
     final correctAnswer = targetWord.spelling.trim().toLowerCase();
 
     final isCorrect = answer == correctAnswer;
+
+    // Speak spelling
+    _speak(targetWord.spelling);
 
     setState(() {
       _isCorrect = isCorrect;
@@ -143,7 +210,7 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
       return Scaffold(
         appBar: AppBar(title: const Text('スペルテスト')),
         body: const Center(
-          child: Text('テストを開始できる単語がありません。'),
+          child: Text('テストを開始できる単語がありません。\n範囲設定を見直してください。', textAlign: TextAlign.center),
         ),
       );
     }
@@ -225,16 +292,29 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
   
                 if (_showHint || _hasChecked)
                   Center(
-                    child: Text(
-                      _hasChecked ? targetWord.spelling : hintText,
-                      style: GoogleFonts.outfit(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                        color: _hasChecked
-                            ? (_isCorrect ? Colors.tealAccent : Colors.redAccent)
-                            : AppTheme.secondary,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _hasChecked ? targetWord.spelling : hintText,
+                          style: GoogleFonts.outfit(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                            color: _hasChecked
+                                ? (_isCorrect ? Colors.tealAccent : Colors.redAccent)
+                                : AppTheme.secondary,
+                          ),
+                        ),
+                        if (_hasChecked) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.volume_up_rounded, size: 24, color: AppTheme.secondary),
+                            onPressed: () => _speak(targetWord.spelling),
+                            tooltip: '発音を聞く',
+                          ),
+                        ],
+                      ],
                     ),
                   )
                 else
@@ -244,6 +324,7 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
                         setState(() {
                           _showHint = true;
                         });
+                        _speak(targetWord.spelling); // ヒント時にも発音
                       },
                       icon: const Icon(Icons.help_outline_rounded, size: 16, color: AppTheme.secondary),
                       label: const Text(

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../theme/app_theme.dart';
+import '../widgets/learning_calendar_dialog.dart';
 import 'card_learning_screen.dart';
 import 'quiz_test_screen.dart';
 import 'spelling_test_screen.dart';
@@ -156,26 +157,37 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.orangeAccent.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 12),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${profile.streakDays}日連続',
-                        style: GoogleFonts.outfit(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orangeAccent,
-                        ),
+                GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const LearningCalendarDialog(),
+                    );
+                  },
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.orangeAccent.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
                       ),
-                    ],
+                      child: Row(
+                        children: [
+                          const Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 12),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${profile.streakDays}日連続 📅',
+                            style: GoogleFonts.outfit(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orangeAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 )
               ],
@@ -394,7 +406,7 @@ class DashboardScreen extends ConsumerWidget {
             style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
           ),
           Text(
-            'VocaBA v2.0',
+            'VocaBA v2.5',
             style: GoogleFonts.outfit(color: AppTheme.textSecondary.withOpacity(0.5), fontSize: 10),
           )
         ],

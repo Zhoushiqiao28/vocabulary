@@ -26,6 +26,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     List<String>? interests,
     String? apiKey,
     String? geminiModel,
+    List<String>? learnedDates,
     int? streakDays,
     DateTime? lastLearnedAt,
   }) async {
@@ -34,10 +35,45 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       interests: interests,
       apiKey: apiKey,
       geminiModel: geminiModel,
+      learnedDates: learnedDates,
       streakDays: streakDays,
       lastLearnedAt: lastLearnedAt,
     );
     await _storage.saveProfile(state);
+  }
+
+  Future<void> recordLearningActivity() async {
+    final now = DateTime.now();
+    final todayStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    
+    final currentDates = List<String>.from(state.learnedDates);
+    if (currentDates.contains(todayStr)) {
+      await updateProfile(lastLearnedAt: now);
+      return;
+    }
+
+    currentDates.add(todayStr);
+    
+    int newStreak = state.streakDays;
+    if (state.lastLearnedAt == null) {
+      newStreak = 1;
+    } else {
+      final yesterday = now.subtract(const Duration(days: 1));
+      final yesterdayStr = "${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}";
+      final lastLearnedStr = "${state.lastLearnedAt!.year}-${state.lastLearnedAt!.month.toString().padLeft(2, '0')}-${state.lastLearnedAt!.day.toString().padLeft(2, '0')}";
+      
+      if (lastLearnedStr == yesterdayStr) {
+        newStreak += 1;
+      } else if (lastLearnedStr != todayStr) {
+        newStreak = 1;
+      }
+    }
+
+    await updateProfile(
+      learnedDates: currentDates,
+      streakDays: newStreak,
+      lastLearnedAt: now,
+    );
   }
 }
 

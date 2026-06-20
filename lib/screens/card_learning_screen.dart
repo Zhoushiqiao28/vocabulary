@@ -251,6 +251,11 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
         _swipeProgressUp = 0.0;
         _showFront = true;
       });
+
+      if (_currentIndex >= _learningWords.length) {
+        ref.read(userProfileProvider.notifier).recordLearningActivity();
+      }
+
       _swipeController.reset();
       _flipController.reset();
 

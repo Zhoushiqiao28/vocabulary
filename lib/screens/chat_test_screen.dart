@@ -100,6 +100,7 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
     try {
       final chatNotifier = ref.read(aiVocaChatProvider.notifier);
       await chatNotifier.sendMessage(text);
+      ref.read(userProfileProvider.notifier).recordLearningActivity();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

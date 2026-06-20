@@ -118,6 +118,7 @@ class UserProfile {
   final List<String> interests;
   final String apiKey;
   final String geminiModel;
+  final List<String> learnedDates;
   final int streakDays;
   final DateTime? lastLearnedAt;
 
@@ -126,6 +127,7 @@ class UserProfile {
     this.interests = const ['Technology', 'F1', 'Space Rover'],
     this.apiKey = '',
     this.geminiModel = 'gemini-2.5-flash',
+    this.learnedDates = const [],
     this.streakDays = 0,
     this.lastLearnedAt,
   });
@@ -135,6 +137,7 @@ class UserProfile {
         'interests': interests,
         'apiKey': apiKey,
         'geminiModel': geminiModel,
+        'learnedDates': learnedDates,
         'streakDays': streakDays,
         'lastLearnedAt': lastLearnedAt?.toIso8601String(),
       };
@@ -144,6 +147,7 @@ class UserProfile {
         interests: List<String>.from(json['interests'] ?? []),
         apiKey: json['apiKey'] ?? '',
         geminiModel: json['geminiModel'] ?? 'gemini-2.5-flash',
+        learnedDates: List<String>.from(json['learnedDates'] ?? []),
         streakDays: json['streakDays'] ?? 0,
         lastLearnedAt: json['lastLearnedAt'] != null
             ? DateTime.parse(json['lastLearnedAt'])
@@ -155,6 +159,7 @@ class UserProfile {
     List<String>? interests,
     String? apiKey,
     String? geminiModel,
+    List<String>? learnedDates,
     int? streakDays,
     DateTime? lastLearnedAt,
   }) {
@@ -163,6 +168,7 @@ class UserProfile {
       interests: interests ?? this.interests,
       apiKey: apiKey ?? this.apiKey,
       geminiModel: geminiModel ?? this.geminiModel,
+      learnedDates: learnedDates ?? this.learnedDates,
       streakDays: streakDays ?? this.streakDays,
       lastLearnedAt: lastLearnedAt ?? this.lastLearnedAt,
     );

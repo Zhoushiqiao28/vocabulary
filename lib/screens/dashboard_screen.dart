@@ -171,17 +171,17 @@ class DashboardScreen extends ConsumerWidget {
     final int xpInCurrentLevel = totalXp % 150;
     final double xpProgress = xpInCurrentLevel / 150.0;
 
-    String title = '駆け出しの暗記士';
+    String title = 'Beginner';
     if (level >= 15) {
-      title = '伝説の単語マスター 👑';
+      title = 'Legend 👑';
     } else if (level >= 10) {
-      title = '英単語の守護者 🌟';
+      title = 'Grandmaster 🌟';
     } else if (level >= 7) {
-      title = '上級暗記スペシャリスト';
+      title = 'Master';
     } else if (level >= 5) {
-      title = '精鋭学習者';
+      title = 'Expert';
     } else if (level >= 3) {
-      title = '意欲的な挑戦者';
+      title = 'Challenger';
     }
 
     return Container(
@@ -378,7 +378,7 @@ class DashboardScreen extends ConsumerWidget {
                           const Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 12),
                           const SizedBox(width: 2),
                           Text(
-                            '${profile.streakDays}日連続 📅',
+                            '${profile.streakDays}日連続',
                             style: GoogleFonts.outfit(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -615,7 +615,7 @@ class DashboardScreen extends ConsumerWidget {
             style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
           ),
           Text(
-            'VocaBA v2.6',
+            'VocaBA v2.7',
             style: GoogleFonts.outfit(color: AppTheme.textSecondary.withOpacity(0.5), fontSize: 10),
           )
         ],

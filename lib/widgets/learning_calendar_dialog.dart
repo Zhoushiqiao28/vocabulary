@@ -49,6 +49,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
   Widget build(BuildContext context) {
     final profile = ref.watch(userProfileProvider);
     final learnedDates = profile.learnedDates;
+    final words = ref.watch(wordListProvider);
 
     // Days in current month
     final daysInMonth = DateTime(_year, _month + 1, 0).day;
@@ -89,7 +90,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
         child: ClipRRect(
           borderRadius: BorderRadius.circular(28),
           child: Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -98,13 +99,19 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '📅 学習履歴カレンダー',
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
+                    Row(
+                      children: [
+                        const Icon(Icons.calendar_month_rounded, color: AppTheme.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          '学習履歴カレンダー',
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded, color: AppTheme.textSecondary),
@@ -114,11 +121,11 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 // Month Selector
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.03),
                     borderRadius: BorderRadius.circular(16),
@@ -130,11 +137,13 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                       IconButton(
                         icon: const Icon(Icons.chevron_left_rounded, color: AppTheme.primary),
                         onPressed: _prevMonth,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                       Text(
                         '$_year年 $_month月',
                         style: GoogleFonts.outfit(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
                         ),
@@ -142,11 +151,13 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                       IconButton(
                         icon: const Icon(Icons.chevron_right_rounded, color: AppTheme.primary),
                         onPressed: _nextMonth,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 // Weekday Row
                 Row(
@@ -158,7 +169,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                         child: Text(
                           day,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                             color: isWeekend ? Colors.redAccent.withOpacity(0.7) : AppTheme.textSecondary,
                           ),
@@ -167,7 +178,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
                 // Days Grid
                 GridView.builder(
@@ -175,9 +186,9 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 7,
-                    mainAxisSpacing: 6,
-                    crossAxisSpacing: 6,
-                    childAspectRatio: 1,
+                    mainAxisSpacing: 4,
+                    crossAxisSpacing: 4,
+                    childAspectRatio: 1.2,
                   ),
                   itemCount: totalCells,
                   itemBuilder: (context, index) {
@@ -187,40 +198,72 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
 
                     final day = index - offset + 1;
                     final dateStr = "$_year-${_month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
-                    final isLearned = learnedDates.contains(dateStr);
+                    
+                    // その日にレビュー（学習判定）した単語数をカウント
+                    final learnedCount = words.where((w) {
+                      if (w.reviewedAt == null) return false;
+                      final d = w.reviewedAt!;
+                      final dStr = "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+                      return dStr == dateStr;
+                    }).length;
                     
                     final now = DateTime.now();
                     final isToday = now.year == _year && now.month == _month && now.day == day;
 
+                    // ヒートマップ（濃淡）のデコレーション決定
+                    BoxDecoration boxDecoration;
+                    Color textColor = AppTheme.textPrimary;
+                    
+                    if (learnedCount >= profile.dailyTarget) {
+                      // 目標達成: プレミアムグラデーション
+                      boxDecoration = BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: [Colors.teal, Colors.tealAccent],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        border: isToday ? Border.all(color: AppTheme.primary, width: 1.5) : null,
+                      );
+                      textColor = Colors.black87;
+                    } else if (learnedCount >= 5) {
+                      // 中位の学習量: 中位のティール
+                      boxDecoration = BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.teal.withOpacity(0.55),
+                        border: isToday ? Border.all(color: AppTheme.primary, width: 1.5) : null,
+                      );
+                      textColor = AppTheme.textPrimary;
+                    } else if (learnedCount > 0) {
+                      // 少ない学習量: 薄いティール
+                      boxDecoration = BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.teal.withOpacity(0.22),
+                        border: isToday ? Border.all(color: AppTheme.primary, width: 1.5) : null,
+                      );
+                      textColor = AppTheme.textPrimary;
+                    } else {
+                      // 学習なし
+                      boxDecoration = BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: isToday ? Border.all(color: AppTheme.primary, width: 1.5) : null,
+                        color: isToday ? AppTheme.primary.withOpacity(0.1) : Colors.transparent,
+                      );
+                      textColor = isToday ? AppTheme.primary : AppTheme.textPrimary;
+                    }
+
                     return Center(
                       child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: isLearned
-                              ? const LinearGradient(
-                                  colors: [Colors.teal, Colors.tealAccent],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
-                              : null,
-                          border: isToday
-                              ? Border.all(color: AppTheme.primary, width: 2)
-                              : null,
-                          color: !isLearned && isToday
-                              ? AppTheme.primary.withOpacity(0.1)
-                              : Colors.transparent,
-                        ),
+                        width: 28,
+                        height: 28,
+                        decoration: boxDecoration,
                         child: Center(
                           child: Text(
                             day.toString(),
                             style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: (isLearned || isToday) ? FontWeight.bold : FontWeight.normal,
-                              color: isLearned
-                                  ? Colors.black87
-                                  : (isToday ? AppTheme.primary : AppTheme.textPrimary),
+                              fontSize: 11,
+                              fontWeight: (learnedCount > 0 || isToday) ? FontWeight.bold : FontWeight.normal,
+                              color: textColor,
                             ),
                           ),
                         ),

@@ -367,82 +367,63 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
         return Container(
           height: MediaQuery.of(context).size.height * 0.65,
           decoration: const BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black54,
-                blurRadius: 20,
-                spreadRadius: 2,
-              )
-            ],
+            color: Color(0xFF141414), // Rule 5: Bottom sheet background Color(0xFF141414)
+            borderRadius: BorderRadius.zero, // Rule 5: BorderRadius.zero
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  width: 50,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+              Text(
+                'AI INSIGHT',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.primary,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                spelling.toUpperCase(),
+                style: GoogleFonts.outfit(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 24),
-              Row(
-                children: [
-                  const Icon(Icons.auto_awesome_rounded, color: AppTheme.primary, size: 24),
-                  const SizedBox(width: 8),
-                  Text(
-                    'AI ニュアンス・語源解説',
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '対象単語: $spelling',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  color: AppTheme.secondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Divider(color: Colors.white12, height: 24),
               Expanded(
                 child: SingleChildScrollView(
                   child: Text(
                     explanation,
-                    style: const TextStyle(
-                      fontSize: 15,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
                       color: AppTheme.textPrimary,
-                      height: 1.6,
+                      height: 1.8,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary.withOpacity(0.15),
-                    foregroundColor: AppTheme.primary,
-                    side: const BorderSide(color: AppTheme.primary, width: 1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: AppTheme.textPrimary,
+                    side: const BorderSide(color: AppTheme.textPrimary, width: 2),
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    elevation: 0,
                   ),
-                  child: const Text('閉じる'),
+                  child: Text(
+                    'CLOSE',
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w800, letterSpacing: 1.5),
+                  ),
                 ),
               )
             ],
@@ -456,8 +437,9 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
+        backgroundColor: Color(0xFF0A0A0A),
         body: Center(
-          child: SpinKitPulse(color: AppTheme.primary, size: 50),
+          child: SpinKitPulse(color: AppTheme.textPrimary, size: 50),
         ),
       );
     }
@@ -468,28 +450,23 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
 
     final currentWord = _learningWords[_currentIndex];
 
-    Color overlayColor = Colors.transparent;
-    if (_swipeProgressRight > 0) {
-      overlayColor = Colors.teal.withOpacity(_swipeProgressRight * 0.15);
-    } else if (_swipeProgressLeft > 0) {
-      overlayColor = Colors.redAccent.withOpacity(_swipeProgressLeft * 0.15);
-    } else if (_swipeProgressUp > 0) {
-      overlayColor = AppTheme.primary.withOpacity(_swipeProgressUp * 0.15);
-    }
-
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF0A0A0A),
+        elevation: 0,
         title: Text(
-          '暗記カード (${_currentIndex + 1}/${_learningWords.length})',
-          style: GoogleFonts.outfit(fontSize: 16),
+          '${_currentIndex + 1} / ${_learningWords.length}',
+          style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 2, color: AppTheme.textPrimary),
         ),
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+          icon: const Icon(Icons.close_rounded, color: AppTheme.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_rounded),
+            icon: const Icon(Icons.settings_rounded, color: AppTheme.textPrimary),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
@@ -500,16 +477,32 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
       ),
       body: Stack(
         children: [
-          // Background Color Overlay
-          AnimatedContainer(
-            duration: Duration(milliseconds: _isDragging ? 0 : 300),
-            color: overlayColor,
-            width: double.infinity,
-            height: double.infinity,
+          // Background Swipe Overlays (Giant Text)
+          Center(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (_swipeProgressRight > 0)
+                  Opacity(
+                    opacity: _swipeProgressRight,
+                    child: Text('MASTERED', style: GoogleFonts.outfit(fontSize: 56, fontWeight: FontWeight.w900, color: AppTheme.success.withOpacity(0.3), letterSpacing: 2)),
+                  ),
+                if (_swipeProgressLeft > 0)
+                  Opacity(
+                    opacity: _swipeProgressLeft,
+                    child: Text('WEAK', style: GoogleFonts.outfit(fontSize: 72, fontWeight: FontWeight.w900, color: AppTheme.error.withOpacity(0.3), letterSpacing: 2)),
+                  ),
+                if (_swipeProgressUp > 0)
+                  Opacity(
+                    opacity: _swipeProgressUp,
+                    child: Text('AI', style: GoogleFonts.outfit(fontSize: 80, fontWeight: FontWeight.w900, color: AppTheme.primary.withOpacity(0.3), letterSpacing: 2)),
+                  ),
+              ],
+            ),
           ),
 
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 16.0),
             child: Column(
               children: [
                 Expanded(
@@ -517,16 +510,6 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // Next card (visual depth)
-                        if (_currentIndex + 1 < _learningWords.length)
-                          Transform.scale(
-                            scale: 0.95,
-                            child: Transform.translate(
-                              offset: const Offset(0, 15),
-                              child: _buildCard(_learningWords[_currentIndex + 1], isDummy: true),
-                            ),
-                          ),
-
                         // Current Card
                         GestureDetector(
                           onTap: _flipCard,
@@ -555,12 +538,9 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
                         if (_isAILoading)
                           Positioned.fill(
                             child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black54,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
+                              color: const Color(0xFF0A0A0A).withOpacity(0.8),
                               child: const Center(
-                                child: SpinKitDoubleBounce(color: AppTheme.secondary, size: 50),
+                                child: SpinKitDoubleBounce(color: AppTheme.textPrimary, size: 50),
                               ),
                             ),
                           )
@@ -569,13 +549,6 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
                   ),
                 ),
                 const SizedBox(height: 16),
-                
-                Text(
-                  '💡 カードをタップして裏返す',
-                  style: TextStyle(color: AppTheme.textSecondary.withOpacity(0.8), fontSize: 13),
-                ),
-                const SizedBox(height: 24),
-                
                 _buildSwipeLegend(),
               ],
             ),
@@ -585,11 +558,7 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
     );
   }
 
-  Widget _buildCard(Word word, {bool isDummy = false}) {
-    if (isDummy) {
-      return _buildCardContent(word, isFront: true);
-    }
-
+  Widget _buildCard(Word word) {
     return AnimatedBuilder(
       animation: _flipController,
       builder: (context, child) {
@@ -618,92 +587,73 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
   Widget _buildCardContent(Word word, {required bool isFront}) {
     return Container(
       width: double.infinity,
-      height: 420,
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isFront ? Colors.white.withOpacity(0.08) : AppTheme.primary.withOpacity(0.2),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 2,
-            offset: const Offset(0, 8),
-          )
-        ],
+      height: 500,
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 32.0),
+      decoration: const BoxDecoration(
+        color: Colors.transparent, // NO CARDS
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (isFront) ...[
-            // Front side: English word OR Japanese meaning
-            if (widget.config.direction == LanguageDirection.enToJa) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Text(
-                      word.spelling,
-                      style: GoogleFonts.outfit(
-                        fontSize: 34,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                        letterSpacing: 0.5,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.volume_up_rounded, size: 28, color: AppTheme.secondary),
-                    onPressed: () => _speak(word.spelling),
-                    tooltip: '発音を聞く',
-                  ),
-                ],
-              ),
-            ] else ...[
-              Text(
-                word.meaningJa,
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'タップして意味を確認',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-              ),
-            )
-          ] else ...[
-            // Back side: Japanese (enToJa) OR English (jaToEn), Core Nuance, AI Example
+            // Front side
             if (widget.config.direction == LanguageDirection.enToJa) ...[
               Text(
                 word.spelling,
                 style: GoogleFonts.outfit(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textSecondary,
+                  fontSize: 56,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                  height: 1.1,
                 ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 32),
+              IconButton(
+                icon: const Icon(Icons.volume_up_rounded, size: 36, color: AppTheme.info),
+                onPressed: () => _speak(word.spelling),
+                tooltip: '発音を聞く',
+              ),
+            ] else ...[
               Text(
                 word.meaningJa,
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
+                style: GoogleFonts.outfit(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+            const Spacer(),
+            Text(
+              'TAP TO FLIP',
+              style: GoogleFonts.outfit(
+                color: AppTheme.textSecondary.withOpacity(0.5),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2,
+              ),
+            )
+          ] else ...[
+            // Back side
+            if (widget.config.direction == LanguageDirection.enToJa) ...[
+              Text(
+                word.spelling,
+                style: GoogleFonts.outfit(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textSecondary,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                word.meaningJa,
+                style: GoogleFonts.outfit(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
                   color: AppTheme.textPrimary,
                 ),
                 textAlign: TextAlign.center,
@@ -711,13 +661,14 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
             ] else ...[
               Text(
                 word.meaningJa,
-                style: const TextStyle(
-                  fontSize: 18,
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                   color: AppTheme.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -725,73 +676,68 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
                     child: Text(
                       word.spelling,
                       style: GoogleFonts.outfit(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 40,
+                        fontWeight: FontWeight.w800,
                         color: AppTheme.textPrimary,
                       ),
                       textAlign: TextAlign.center,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.volume_up_rounded, size: 24, color: AppTheme.secondary),
+                    icon: const Icon(Icons.volume_up_rounded, size: 32, color: AppTheme.info),
                     onPressed: () => _speak(word.spelling),
                     tooltip: '発音を聞く',
                   ),
                 ],
               ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 48),
 
             // Contextual Example Box
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.only(left: 16.0, top: 4.0, bottom: 4.0),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.02),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.04)),
+                border: Border(
+                  left: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3), width: 2),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.subject_rounded, color: AppTheme.textSecondary, size: 14),
-                      const SizedBox(width: 6),
-                      Text(
-                        'CONTEXTUAL EXAMPLE',
-                        style: GoogleFonts.outfit(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textSecondary,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'CONTEXT',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textSecondary,
+                      letterSpacing: 2.0,
+                    ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   if (word.customExampleEn == null)
                     const Center(
                       child: SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.textPrimary),
                       ),
                     )
                   else ...[
                     Text(
                       word.customExampleEn!,
                       style: GoogleFonts.outfit(
-                        fontSize: 13,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                         color: AppTheme.textPrimary,
                         height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(
                       word.customExampleJa!,
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
                         color: AppTheme.textSecondary,
                         height: 1.3,
                       ),
@@ -807,27 +753,31 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
   }
 
   Widget _buildSwipeLegend() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _buildLegendItem(Icons.arrow_back_rounded, '覚えてない', Colors.redAccent),
-        _buildLegendItem(Icons.arrow_upward_rounded, 'AI解説', AppTheme.primary),
-        _buildLegendItem(Icons.arrow_forward_rounded, '覚えた', Colors.teal),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildLegendItem(Icons.arrow_back_rounded, 'WEAK', AppTheme.error),
+          _buildLegendItem(Icons.arrow_upward_rounded, 'AI', AppTheme.primary),
+          _buildLegendItem(Icons.arrow_forward_rounded, 'MASTERED', AppTheme.success),
+        ],
+      ),
     );
   }
 
   Widget _buildLegendItem(IconData icon, String label, Color color) {
     return Row(
       children: [
-        Icon(icon, color: color.withOpacity(0.7), size: 16),
-        const SizedBox(width: 4),
+        Icon(icon, color: color, size: 16),
+        const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+          style: GoogleFonts.outfit(
+            color: color,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1,
           ),
         ),
       ],
@@ -836,40 +786,27 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
 
   Widget _buildFinishedScreen() {
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.secondary.withOpacity(0.1),
-                  border: Border.all(color: AppTheme.secondary, width: 2),
-                ),
-                child: const Icon(
-                  Icons.check_rounded,
-                  color: AppTheme.secondary,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 32),
               Text(
-                'セッション完了！ 🎉',
+                'DONE',
                 style: GoogleFonts.outfit(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 64,
+                  fontWeight: FontWeight.w900,
                   color: AppTheme.textPrimary,
+                  letterSpacing: -1,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 24),
               Text(
-                '今日のカード暗記が完了しました。\nまた次の10語を学びましょう！',
-                style: const TextStyle(
-                  fontSize: 15,
+                'Session complete.\nTime for the next batch.',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
                   color: AppTheme.textSecondary,
                   height: 1.5,
                 ),
@@ -877,18 +814,20 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> with Ti
               ),
               const SizedBox(height: 48),
               SizedBox(
-                width: 200,
-                height: 50,
+                width: double.infinity,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    elevation: 0,
                   ),
-                  child: const Text('戻る'),
+                  child: Text(
+                    'RETURN',
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w800, letterSpacing: 1.5, fontSize: 16),
+                  ),
                 ),
               )
             ],

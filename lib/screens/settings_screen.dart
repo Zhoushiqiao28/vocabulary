@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/models.dart';
 import '../providers/providers.dart';
-import '../theme/app_theme.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -12,147 +12,298 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  late TextEditingController _nameController;
-  late TextEditingController _keyController;
-  late TextEditingController _interestController;
+  final _nameController = TextEditingController();
+  final _apiKeyController = TextEditingController();
+  final _interestsController = TextEditingController();
+  
+  int _dailyTarget = 10;
+  String _selectedModel = 'gemini-2.5-flash';
+  
   bool _isTesting = false;
-  Map<String, dynamic>? _testResult;
-  late String _selectedModel;
-  late int _dailyTarget;
+  bool? _testSuccess;
+  String? _testMessage;
 
   @override
   void initState() {
     super.initState();
-    final profile = ref.read(userProfileProvider);
-    _nameController = TextEditingController(text: profile.name);
-    _keyController = TextEditingController(text: profile.apiKey);
-    _interestController = TextEditingController(text: profile.interests.join(', '));
-    _selectedModel = profile.geminiModel;
-    _dailyTarget = profile.dailyTarget;
+    // Load current values
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final profile = ref.read(userProfileProvider);
+      _nameController.text = profile.name;
+      _apiKeyController.text = profile.apiKey;
+      _interestsController.text = profile.interests.join(', ');
+      setState(() {
+        _dailyTarget = profile.dailyTarget;
+        _selectedModel = profile.geminiModel;
+      });
+    });
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _keyController.dispose();
-    _interestController.dispose();
+    _apiKeyController.dispose();
+    _interestsController.dispose();
     super.dispose();
   }
 
-  Future<void> _saveSettings() async {
-    final name = _nameController.text.trim();
-    final apiKey = _keyController.text.trim();
-    final interests = _interestController.text
+  Future<void> _testConnection() async {
+    setState(() {
+      _isTesting = true;
+      _testSuccess = null;
+      _testMessage = null;
+    });
+
+    try {
+      final gemini = ref.read(geminiServiceProvider);
+      // We test with the current text field value, not saved state
+      final result = await gemini.testConnection(_apiKeyController.text.trim());
+      final success = result['success'] as bool? ?? false;
+      
+      if (mounted) {
+        setState(() {
+          _isTesting = false;
+          _testSuccess = success;
+          _testMessage = result['message'] as String? ?? (success ? 'Connection successful.' : 'Connection failed.');
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isTesting = false;
+          _testSuccess = false;
+          _testMessage = 'Error: ${e.toString()}';
+        });
+      }
+    }
+  }
+
+  void _saveSettings() {
+    final interests = _interestsController.text
         .split(',')
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toList();
 
-    await ref.read(userProfileProvider.notifier).updateProfile(
-          name: name.isEmpty ? 'User' : name,
-          apiKey: apiKey,
-          interests: interests.isEmpty ? ['Technology'] : interests,
-          geminiModel: _selectedModel,
-          dailyTarget: _dailyTarget,
-        );
+    ref.read(userProfileProvider.notifier).updateProfile(
+      name: _nameController.text.trim().isEmpty ? 'Guest' : _nameController.text.trim(),
+      dailyTarget: _dailyTarget,
+      interests: interests,
+      apiKey: _apiKeyController.text.trim(),
+      geminiModel: _selectedModel,
+    );
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('設定を保存しました！'),
-          backgroundColor: AppTheme.secondary,
-        ),
-      );
-      Navigator.of(context).pop();
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('SETTINGS SAVED', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, letterSpacing: 1.0)),
+        backgroundColor: const Color(0xFFE10600),
+        behavior: SnackBarBehavior.floating,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        margin: const EdgeInsets.all(24),
+      ),
+    );
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
-        title: const Text('⚙️ 設定'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'SETTINGS',
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 2.0,
+            color: Colors.white,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'パーソナライズ設定',
-                style: GoogleFonts.outfit(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'AIがあなたの興味関心に合わせた例文を自動生成します。',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-              ),
-              const SizedBox(height: 32),
-
-              // Name Field
+              _buildSectionTitle('PROFILE'),
+              const SizedBox(height: 24),
               _buildTextField(
-                label: 'ユーザー名',
                 controller: _nameController,
-                hint: '例：Hiro',
-                icon: Icons.person_rounded,
+                label: 'NAME',
+                hint: 'Enter your name',
               ),
               const SizedBox(height: 24),
-
-              // Gemini API Key Field
               _buildTextField(
-                label: 'Gemini APIキー',
-                controller: _keyController,
-                hint: 'AI機能を動かすためのキーを入力してください',
-                icon: Icons.vpn_key_rounded,
-                isPassword: true,
-                helper: '※入力されたAPIキーはご自身の端末に安全に保存されます。キーがない場合はモックデータで動作します。',
+                controller: _interestsController,
+                label: 'INTERESTS (COMMA SEPARATED)',
+                hint: 'e.g., F1, Programming, Cooking',
+              ),
+              
+              const SizedBox(height: 48),
+              
+              _buildSectionTitle('GOALS'),
+              const SizedBox(height: 24),
+              Text(
+                'DAILY TARGET',
+                style: GoogleFonts.outfit(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.5),
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderThemeData(
+                        activeTrackColor: const Color(0xFFE10600),
+                        inactiveTrackColor: Colors.white.withOpacity(0.1),
+                        thumbColor: Colors.white,
+                        trackHeight: 2,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                      ),
+                      child: Slider(
+                        value: _dailyTarget.toDouble(),
+                        min: 5,
+                        max: 50,
+                        divisions: 9,
+                        onChanged: (val) {
+                          setState(() {
+                            _dailyTarget = val.toInt();
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    '$_dailyTarget',
+                    style: GoogleFonts.outfit(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 48),
+              
+              _buildSectionTitle('AI ENGINE'),
+              const SizedBox(height: 24),
+              _buildTextField(
+                controller: _apiKeyController,
+                label: 'GEMINI API KEY',
+                hint: 'AIz...',
+                obscureText: true,
+              ),
+              const SizedBox(height: 24),
+              
+              Text(
+                'MODEL',
+                style: GoogleFonts.outfit(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.5),
+                  letterSpacing: 1.0,
+                ),
               ),
               const SizedBox(height: 12),
-              _buildConnectionTestWidget(),
-              const SizedBox(height: 24),
-
-              // Interests Field
-              _buildTextField(
-                label: 'あなたの興味関心（カンマ区切り）',
-                controller: _interestController,
-                hint: '例：宇宙開発, F1, K-POP, 旅行',
-                icon: Icons.favorite_rounded,
-                helper: '※AIが例文を作る際、このテーマに基づいたストーリーを生成します。',
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _buildModelChip('gemini-2.5-flash', 'Flash (Fast)'),
+                  _buildModelChip('gemini-2.5-pro', 'Pro (Smart)'),
+                ],
               ),
+              
               const SizedBox(height: 24),
-
-              // Daily Target Field
-              _buildTargetSlider(),
-              const SizedBox(height: 48),
-
-              // Save Button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _saveSettings,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 4,
+              
+              // Test Connection Button (Sharp outline)
+              OutlinedButton(
+                onPressed: _isTesting ? null : _testConnection,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                ),
+                child: _isTesting
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Text(
+                        'TEST CONNECTION',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+              ),
+              
+              if (_testSuccess != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: _testSuccess! ? const Color(0xFF34D399).withOpacity(0.1) : const Color(0xFFF87171).withOpacity(0.1),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _testSuccess! ? Icons.check_circle_outline : Icons.error_outline,
+                        color: _testSuccess! ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _testMessage ?? '',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: _testSuccess! ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    '設定を保存する',
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+              ],
+              
+              const SizedBox(height: 64),
+              
+              // Save Button (Full bleed red)
+              ElevatedButton(
+                onPressed: _saveSettings,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE10600),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  elevation: 0,
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                ),
+                child: Text(
+                  'SAVE CHANGES',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
                   ),
                 ),
               ),
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -160,249 +311,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildTargetSlider() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '1日の目標単語数',
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '毎日の目標',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-                  ),
-                  Text(
-                    '$_dailyTarget 語',
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.secondary,
-                    ),
-                  ),
-                ],
-              ),
-              Slider(
-                value: _dailyTarget.toDouble(),
-                min: 5,
-                max: 50,
-                divisions: 9, // 5, 10, 15, 20, 25, 30, 35, 40, 45, 50
-                label: '$_dailyTarget 語',
-                activeColor: AppTheme.primary,
-                inactiveColor: Colors.white10,
-                onChanged: (value) {
-                  setState(() {
-                    _dailyTarget = value.round();
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _runConnectionTest() async {
-    final key = _keyController.text.trim();
-    setState(() {
-      _isTesting = true;
-      _testResult = null;
-    });
-
-    final geminiService = ref.read(geminiServiceProvider);
-    final result = await geminiService.testConnection(key);
-
-    if (mounted) {
-      setState(() {
-        _isTesting = false;
-        _testResult = result;
-        if (result['success'] == true && result['bestModel'] != null) {
-          _selectedModel = result['bestModel'];
-        }
-      });
-    }
-  }
-
-  Widget _buildConnectionTestWidget() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            ElevatedButton.icon(
-              onPressed: _isTesting ? null : _runConnectionTest,
-              icon: _isTesting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.flash_on_rounded, size: 18),
-              label: Text(_isTesting ? 'テスト中...' : 'APIキー接続テスト'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.secondary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (!_isTesting && _testResult == null)
-              Text(
-                '接続状況を確認できます',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-              ),
-          ],
-        ),
-        if (_testResult != null) ...[
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _testResult!['success'] == true
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _testResult!['success'] == true
-                    ? Colors.green.withOpacity(0.3)
-                    : Colors.red.withOpacity(0.3),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      _testResult!['success'] == true
-                          ? Icons.check_circle_rounded
-                          : Icons.error_rounded,
-                      color: _testResult!['success'] == true ? Colors.green : Colors.red,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _testResult!['success'] == true ? '接続成功！' : '接続失敗',
-                        style: GoogleFonts.outfit(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: _testResult!['success'] == true ? Colors.green : Colors.red,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _testResult!['message'] ?? '',
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (_testResult!['success'] == true && _testResult!['bestModel'] != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    '💡 会話や例文生成には、お使いのキーで利用可能な最新モデル「${_testResult!['bestModel']}」が自動選択され、設定保存時に適用されます。',
-                    style: const TextStyle(
-                      color: AppTheme.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-                if (_testResult!['advice'] != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '【アドバイス】\n${_testResult!['advice']}',
-                    style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-                if (_testResult!['models'] != null && (_testResult!['models'] as List).isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text(
-                    '利用可能なモデル:',
-                    style: TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: (_testResult!['models'] as List).map((m) {
-                      final modelStr = m.toString();
-                      final shortName = modelStr.replaceFirst('models/', '');
-                      final isFlash = shortName.contains('gemini-1.5-flash');
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isFlash ? AppTheme.primary.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isFlash ? AppTheme.primary.withOpacity(0.4) : Colors.white.withOpacity(0.1),
-                          ),
-                        ),
-                        child: Text(
-                          shortName,
-                          style: TextStyle(
-                            color: isFlash ? AppTheme.primary : AppTheme.textSecondary,
-                            fontSize: 10,
-                            fontWeight: isFlash ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ],
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.outfit(
+        fontSize: 24,
+        fontWeight: FontWeight.w800,
+        color: Colors.white,
+        letterSpacing: -0.5,
+      ),
     );
   }
 
   Widget _buildTextField({
-    required String label,
     required TextEditingController controller,
+    required String label,
     required String hint,
-    required IconData icon,
-    bool isPassword = false,
-    String? helper,
+    bool obscureText = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,41 +335,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         Text(
           label,
           style: GoogleFonts.outfit(
-            fontSize: 14,
+            fontSize: 10,
             fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
+            color: Colors.white.withOpacity(0.5),
+            letterSpacing: 1.0,
           ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
-          obscureText: isPassword,
-          style: const TextStyle(color: AppTheme.textPrimary),
+          obscureText: obscureText,
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            color: Colors.white,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: AppTheme.textSecondary),
-            prefixIcon: Icon(icon, color: AppTheme.primary),
+            hintStyle: GoogleFonts.outfit(color: Colors.white.withOpacity(0.2)),
             filled: true,
-            fillColor: AppTheme.surface,
+            fillColor: Colors.white.withOpacity(0.05),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppTheme.primary),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFFE10600), width: 2),
             ),
           ),
         ),
-        if (helper != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            helper,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, height: 1.3),
-          ),
-        ]
       ],
+    );
+  }
+
+  Widget _buildModelChip(String modelValue, String label) {
+    final isSelected = _selectedModel == modelValue;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedModel = modelValue;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          border: Border.all(
+            color: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.outfit(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? Colors.black : Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }

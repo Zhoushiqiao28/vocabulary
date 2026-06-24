@@ -57,9 +57,9 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppTheme.surface,
+          backgroundColor: const Color(0xFF0A0A0A),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.zero,
             side: BorderSide(color: Colors.white.withOpacity(0.05)),
           ),
           title: Text(
@@ -78,8 +78,8 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     labelText: '英単語 (Spelling)',
                     labelStyle: const TextStyle(color: AppTheme.textSecondary),
                     filled: true,
-                    fillColor: Colors.black12,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    fillColor: const Color(0xFF0A0A0A),
+                    border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -90,8 +90,8 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     labelText: '日本語訳 (Meaning)',
                     labelStyle: const TextStyle(color: AppTheme.textSecondary),
                     filled: true,
-                    fillColor: Colors.black12,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    fillColor: const Color(0xFF0A0A0A),
+                    border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -102,8 +102,8 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     labelText: 'コアイメージ/ニュアンス (任意)',
                     labelStyle: const TextStyle(color: AppTheme.textSecondary),
                     filled: true,
-                    fillColor: Colors.black12,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    fillColor: const Color(0xFF0A0A0A),
+                    border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
                   ),
                 ),
               ],
@@ -139,7 +139,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
               ),
               child: Text(isEdit ? '保存' : '追加'),
             ),
@@ -155,7 +155,11 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppTheme.surface,
+          backgroundColor: const Color(0xFF0A0A0A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+            side: BorderSide(color: Colors.white.withOpacity(0.05)),
+          ),
           title: const Text('単語の削除', style: TextStyle(color: AppTheme.textPrimary)),
           content: Text('${word.spelling} を単語帳から削除しますか？', style: const TextStyle(color: AppTheme.textSecondary)),
           actions: [
@@ -168,7 +172,10 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                 ref.read(wordListProvider.notifier).deleteWord(word.id);
                 Navigator.pop(context);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.error,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              ),
               child: const Text('削除', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -209,7 +216,9 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
     }).toList();
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF0A0A0A),
         title: Text(
           '📖 単語帳リスト',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
@@ -218,6 +227,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showWordFormDialog(),
         backgroundColor: AppTheme.primary,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         child: const Icon(Icons.add, color: Colors.white),
       ),
       body: SafeArea(
@@ -236,7 +246,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                 },
                 decoration: InputDecoration(
                   hintText: '英単語・意味で検索...',
-                  hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.3)),
+                  hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(AppTheme.opStrong)),
                   prefixIcon: const Icon(Icons.search, color: AppTheme.textSecondary),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -253,11 +263,11 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                   fillColor: AppTheme.surface,
                   contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.zero,
                     borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
                     borderSide: const BorderSide(color: AppTheme.primary),
                   ),
                 ),
@@ -276,7 +286,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     label: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.star, color: Colors.orangeAccent, size: 14),
+                        Icon(Icons.star, color: AppTheme.warning, size: 14),
                         SizedBox(width: 4),
                         Text('お気に入り', style: TextStyle(fontSize: 12)),
                       ],
@@ -287,10 +297,10 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                         _onlyFavorites = selected;
                       });
                     },
-                    selectedColor: Colors.orangeAccent.withOpacity(0.2),
-                    checkmarkColor: Colors.orangeAccent,
+                    selectedColor: AppTheme.warning.withOpacity(AppTheme.opMedium),
+                    checkmarkColor: AppTheme.warning,
                     backgroundColor: AppTheme.surface,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                   ),
                   const SizedBox(width: 8),
 
@@ -299,7 +309,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     label: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.person, color: AppTheme.secondary, size: 14),
+                        Icon(Icons.person, color: AppTheme.info, size: 14),
                         SizedBox(width: 4),
                         Text('自作単語', style: TextStyle(fontSize: 12)),
                       ],
@@ -310,10 +320,10 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                         _onlyUserWords = selected;
                       });
                     },
-                    selectedColor: AppTheme.secondary.withOpacity(0.2),
-                    checkmarkColor: AppTheme.secondary,
+                    selectedColor: AppTheme.info.withOpacity(AppTheme.opMedium),
+                    checkmarkColor: AppTheme.info,
                     backgroundColor: AppTheme.surface,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                   ),
                   const SizedBox(width: 8),
 
@@ -337,12 +347,12 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                             });
                           }
                         },
-                        selectedColor: AppTheme.primary.withOpacity(0.2),
+                        selectedColor: AppTheme.primary.withOpacity(AppTheme.opMedium),
                         labelStyle: TextStyle(
                           color: isSelected ? AppTheme.primary : AppTheme.textPrimary,
                         ),
                         backgroundColor: AppTheme.surface,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                       ),
                     );
                   }),
@@ -373,15 +383,20 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.folder_open_rounded, color: AppTheme.textSecondary.withOpacity(0.2), size: 64),
+                          Icon(Icons.folder_open_rounded, color: AppTheme.textSecondary.withOpacity(AppTheme.opMedium), size: 64),
                           const SizedBox(height: 16),
                           const Text('単語が見つかりません', style: TextStyle(color: AppTheme.textSecondary)),
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       itemCount: filteredWords.length,
+                      separatorBuilder: (context, index) => Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Colors.white.withOpacity(0.05),
+                      ),
                       itemBuilder: (context, index) {
                         final word = filteredWords[index];
                         return _buildWordTile(word);
@@ -396,158 +411,150 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
 
   Widget _buildWordTile(Word word) {
     // Status color
-    Color statusColor = Colors.white24;
+    Color statusColor = Colors.white.withOpacity(AppTheme.opStrong);
     String statusText = '未学習';
     if (word.status == 1) {
-      statusColor = Colors.teal;
+      statusColor = AppTheme.success;
       statusText = '覚えた';
     } else if (word.status == 2) {
-      statusColor = Colors.redAccent;
+      statusColor = AppTheme.error;
       statusText = '覚えてない';
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.03)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Row(
-          children: [
-            // Left Content (Spelling & Meaning)
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // Spelling
-                      Text(
-                        word.spelling,
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Pronunciation Speak Button
-                      IconButton(
-                        icon: const Icon(Icons.volume_up_rounded, size: 18, color: AppTheme.secondary),
-                        onPressed: () => _speak(word.spelling),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        tooltip: '発音を聞く',
-                      ),
-                      // System Badge
-                      if (word.isSystem) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'System',
-                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 8, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ]
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  // Meaning
-                  Text(
-                    word.meaningJa,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  if (word.coreNuance != null && word.coreNuance!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'イメージ: ${word.coreNuance}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.accent,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ]
-                ],
-              ),
-            ),
-
-            // Right Actions (Star, Status Dropdown, CRUD icons)
-            Row(
-              mainAxisSize: MainAxisSize.min,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      child: Row(
+        children: [
+          // Left Content (Spelling & Meaning)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Favorite Star
-                IconButton(
-                  icon: Icon(
-                    word.isFavorite ? Icons.star : Icons.star_border,
-                    color: word.isFavorite ? Colors.orangeAccent : AppTheme.textSecondary,
-                    size: 24,
-                  ),
-                  onPressed: () {
-                    ref.read(wordListProvider.notifier).toggleFavorite(word.id);
-                  },
-                ),
-
-                // Status Cycle button
-                InkWell(
-                  onTap: () {
-                    // Cycles: 0 -> 1 -> 2 -> 0
-                    final nextStatus = (word.status + 1) % 3;
-                    ref.read(wordListProvider.notifier).updateWordStatus(word.id, nextStatus);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: statusColor.withOpacity(0.3)),
-                    ),
-                    child: Text(
-                      statusText,
-                      style: TextStyle(
-                        color: word.status == 0 ? AppTheme.textSecondary : statusColor,
-                        fontSize: 11,
+                Row(
+                  children: [
+                    // Spelling
+                    Text(
+                      word.spelling,
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    // Pronunciation Speak Button
+                    IconButton(
+                      icon: const Icon(Icons.volume_up_rounded, size: 18, color: AppTheme.info),
+                      onPressed: () => _speak(word.spelling),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: '発音を聞く',
+                    ),
+                    // System Badge
+                    if (word.isSystem) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(AppTheme.opLight),
+                          borderRadius: BorderRadius.zero,
+                        ),
+                        child: const Text(
+                          'System',
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 8, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Meaning
+                Text(
+                  word.meaningJa,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(width: 8),
-
-                // Custom words edit/delete icons (Protected if isSystem is true)
-                if (!word.isSystem) ...[
-                  IconButton(
-                    icon: const Icon(Icons.edit_rounded, color: AppTheme.textSecondary, size: 20),
-                    onPressed: () => _showWordFormDialog(word: word),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                if (word.coreNuance != null && word.coreNuance!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'イメージ: ${word.coreNuance}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.accent,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
-                  const SizedBox(width: 6),
-                  IconButton(
-                    icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 20),
-                    onPressed: () => _confirmDelete(word),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ] else ...[
-                  // Hidden spacing for alignment
-                  const SizedBox(width: 44),
                 ]
               ],
             ),
-          ],
-        ),
+          ),
+
+          // Right Actions (Star, Status Dropdown, CRUD icons)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Favorite Star
+              IconButton(
+                icon: Icon(
+                  word.isFavorite ? Icons.star : Icons.star_border,
+                  color: word.isFavorite ? AppTheme.warning : AppTheme.textSecondary,
+                  size: 24,
+                ),
+                onPressed: () {
+                  ref.read(wordListProvider.notifier).toggleFavorite(word.id);
+                },
+              ),
+
+              // Status Cycle button
+              InkWell(
+                onTap: () {
+                  // Cycles: 0 -> 1 -> 2 -> 0
+                  final nextStatus = (word.status + 1) % 3;
+                  ref.read(wordListProvider.notifier).updateWordStatus(word.id, nextStatus);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(AppTheme.opMedium),
+                    borderRadius: BorderRadius.zero,
+                    border: Border.all(color: statusColor.withOpacity(AppTheme.opStrong)),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: word.status == 0 ? AppTheme.textSecondary : statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Custom words edit/delete icons (Protected if isSystem is true)
+              if (!word.isSystem) ...[
+                IconButton(
+                  icon: const Icon(Icons.edit_rounded, color: AppTheme.textSecondary, size: 20),
+                  onPressed: () => _showWordFormDialog(word: word),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: const Icon(Icons.delete_rounded, color: AppTheme.error, size: 20),
+                  onPressed: () => _confirmDelete(word),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ] else ...[
+                // Hidden spacing for alignment
+                const SizedBox(width: 44),
+              ]
+            ],
+          ),
+        ],
       ),
     );
   }

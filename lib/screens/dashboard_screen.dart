@@ -45,678 +45,430 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(userProfileProvider);
     final words = ref.watch(wordListProvider);
-
     final masteredCount = words.where((e) => e.status == 1).toList().length;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWide = screenWidth >= 700;
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A), // Strict dark canvas
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Top Header
-                _buildHeader(context, profile),
-                const SizedBox(height: 16),
-
-                // Motivating Status Panel (Daily Target Progress & Level XP)
-                _buildStatusAndGoalsPanel(context, profile, words),
-                const SizedBox(height: 16),
-
-                // HUGE main start card (with fixed height for scrollview stability)
-                SizedBox(
-                  height: 160,
-                  child: _buildMainStartCard(context, words.length, profile),
-                ),
-                const SizedBox(height: 20),
-
-                // Practice modes
-                Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildSubActionCard(
-                            context: context,
-                            title: 'SPEED TRAP',
-                            description: '4択テストで瞬発力を測定',
-                            icon: Icons.speed_rounded,
-                            color: AppTheme.secondary,
-                            onTap: () {
-                              _startLearning(
-                                context,
-                                words.length,
-                                isTest: true,
-                                isSpelling: false,
-                                screenBuilder: (config) => QuizTestScreen(config: config),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildSubActionCard(
-                            context: context,
-                            title: 'PIT STOP',
-                            description: 'スペルテストで正確性を強化',
-                            icon: Icons.build_circle_rounded,
-                            color: AppTheme.accent,
-                            onTap: () {
-                              _startLearning(
-                                context,
-                                words.length,
-                                isTest: true,
-                                isSpelling: true,
-                                screenBuilder: (config) => SpellingTestScreen(config: config),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSubActionCard(
-                      context: context,
-                      title: 'TEAM RADIO (AI対話)',
-                      description: '今日の学習単語をAIが自動で無線会話に組み込み',
-                      icon: Icons.headset_mic_rounded,
-                      color: AppTheme.primary,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (context) => const ChatTestScreen()),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Bottom mini footer
-                _buildMiniFooter(masteredCount, words.length),
-              ],
-            ),
-          ),
-        ),
+        child: isWide
+            ? _buildWideLayout(context, profile, words, masteredCount)
+            : _buildNarrowLayout(context, profile, words, masteredCount),
       ),
     );
   }
 
-  Widget _buildStatusAndGoalsPanel(BuildContext context, dynamic profile, List<Word> words) {
-    // 1. 今日のレビュー数
-    final now = DateTime.now();
-    final todayReviewedCount = words.where((w) {
-      if (w.reviewedAt == null) return false;
-      final d = w.reviewedAt!;
-      return d.year == now.year && d.month == now.month && d.day == now.day;
-    }).length;
-
-    final target = profile.dailyTarget;
-    final double goalProgress = target > 0 
-        ? (todayReviewedCount / target).clamp(0.0, 1.0) 
-        : 0.0;
-    final bool isGoalAchieved = todayReviewedCount >= target;
-
-    // 2. XP & レベル計算
-    final reviewedWords = words.where((w) => w.reviewedAt != null).length;
-    final masteredWords = words.where((w) => w.status == 1).length;
-    final int streak = profile.streakDays is int ? profile.streakDays : 0;
-    final int totalXp = (reviewedWords * 10) + (masteredWords * 20) + (streak * 50);
-    
-    final int level = (totalXp / 150).floor() + 1;
-    final int xpInCurrentLevel = totalXp % 150;
-    final double xpProgress = xpInCurrentLevel / 150.0;
-
-    String title = 'Beginner';
-    if (level >= 15) {
-      title = 'Legend 👑';
-    } else if (level >= 10) {
-      title = 'Grandmaster 🌟';
-    } else if (level >= 7) {
-      title = 'Master';
-    } else if (level >= 5) {
-      title = 'Expert';
-    } else if (level >= 3) {
-      title = 'Challenger';
-    }
-
-    // 3. ERS (XP) Bar Segments (10 blocks)
-    final List<Widget> segments = [];
-    for (int i = 0; i < 10; i++) {
-      final double threshold = i / 10.0;
-      final bool active = xpProgress > threshold;
-      segments.add(
-        Expanded(
-          child: Container(
-            height: 6,
-            margin: const EdgeInsets.symmetric(horizontal: 1.5),
-            decoration: BoxDecoration(
-              color: active 
-                  ? AppTheme.accent.withOpacity(0.9) // アシッドライムグリーン
-                  : Colors.white.withOpacity(0.04), // 未充電
-              borderRadius: BorderRadius.circular(1.5),
-              border: Border.all(
-                color: active ? AppTheme.accent.withOpacity(0.5) : Colors.transparent,
-                width: 0.5,
-              ),
-              boxShadow: active ? [
-                BoxShadow(
-                  color: AppTheme.accent.withOpacity(0.3),
-                  blurRadius: 4,
-                  spreadRadius: 0.5,
-                )
-              ] : null,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.07)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          // 左側: レブリミットLED風目標リング（タコメーター風）
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 78,
-                height: 78,
-                child: ShaderMask(
-                  shaderCallback: (rect) {
-                    return const SweepGradient(
-                      startAngle: -pi / 2,
-                      endAngle: pi * 1.5,
-                      colors: [
-                        Colors.greenAccent,
-                        Colors.amberAccent,
-                        AppTheme.primary,
-                      ],
-                      stops: [0.0, 0.65, 1.0],
-                    ).createShader(rect);
-                  },
-                  child: CircularProgressIndicator(
-                    value: goalProgress == 0 ? 0.01 : goalProgress,
-                    strokeWidth: 6,
-                    backgroundColor: Colors.white.withOpacity(0.05),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isGoalAchieved) ...[
-                    Text(
-                      '🏁 P1',
-                      style: GoogleFonts.orbitron(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.amberAccent,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    const Text(
-                      'LIMIT',
-                      style: TextStyle(
-                        fontSize: 7,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.amberAccent,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ] else ...[
-                    Text(
-                      '$todayReviewedCount',
-                      style: GoogleFonts.shareTechMono(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      '/$target LAP',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ],
-              )
-            ],
-          ),
-          const SizedBox(width: 20),
-          
-          // 右側: ギアインジケーター（Lv）＆ ERSバッテリーエネルギーゲージ
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // ギアインジケーター風レベル表示
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'GEAR',
-                          style: TextStyle(
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textSecondary,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '$level',
-                          style: GoogleFonts.orbitron(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            color: AppTheme.primary,
-                            height: 0.95,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'STATUS',
-                            style: TextStyle(
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textSecondary,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            title.toUpperCase(),
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                
-                // ERSエネルギー表示
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'ENERGY / ERS',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    Text(
-                      '$xpInCurrentLevel / 150 XP',
-                      style: GoogleFonts.shareTechMono(
-                        fontSize: 10,
-                        color: AppTheme.accent,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                // 分割セグメント
-                Row(
-                  children: segments,
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, dynamic profile) {
-    final now = DateTime.now();
-    final weekdays = ['月', '火', '水', '木', '金', '土', '日'];
-    final dateString = "${now.year}年${now.month}月${now.day}日(${weekdays[now.weekday - 1]})";
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // ═══════════════════════════════════════════════
+  // NARROW LAYOUT (Mobile < 700px)
+  // ═══════════════════════════════════════════════
+  Widget _buildNarrowLayout(BuildContext context, dynamic profile, List<Word> words, int masteredCount) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        // Top Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+          child: _buildHeader(context, profile),
+        ),
+
+        // Center: Giant Progress Ring
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '${profile.name} 👋',
-                  style: GoogleFonts.outfit(
-                    fontSize: 22,
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => const LearningCalendarDialog(),
-                    );
-                  },
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.orangeAccent.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 12),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${profile.streakDays}日連続',
-                            style: GoogleFonts.outfit(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orangeAccent,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  dateString,
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
+                _buildGiantProgressRing(profile, words),
+                const SizedBox(height: 32),
+                _buildMinimalStatsLine(profile, masteredCount),
               ],
             ),
-          ],
+          ),
         ),
-        Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.menu_book_rounded, color: AppTheme.textSecondary),
-              tooltip: '単語帳リスト',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const WordListScreen()),
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.settings_rounded, color: AppTheme.textSecondary),
-              tooltip: '設定',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                );
-              },
-            ),
-          ],
+
+        // Bottom Actions (Full bleed)
+        _buildSessionBand(context, words.length, profile),
+        _buildModeList(context, words.length),
+        
+        // Footer
+        Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: _buildFooter(masteredCount, words.length),
         ),
       ],
     );
   }
 
-  Widget _buildMainStartCard(BuildContext context, int totalWordsCount, UserProfile profile) {
+  // ═══════════════════════════════════════════════
+  // WIDE LAYOUT (Desktop ≥ 700px)
+  // ═══════════════════════════════════════════════
+  Widget _buildWideLayout(BuildContext context, dynamic profile, List<Word> words, int masteredCount) {
+    return Row(
+      children: [
+        // Left Side: Typography and Ring
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 32.0),
+                child: _buildHeader(context, profile),
+              ),
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildGiantProgressRing(profile, words),
+                      const SizedBox(height: 32),
+                      _buildMinimalStatsLine(profile, masteredCount),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Divider
+        Container(
+          width: 1,
+          color: Colors.white.withOpacity(0.05),
+        ),
+        // Right Side: Actions
+        Expanded(
+          flex: 1,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
+              _buildSessionBand(context, words.length, profile),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: _buildModeList(context, words.length),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 32.0),
+                child: _buildFooter(masteredCount, words.length),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // COMPONENTS
+  // ═══════════════════════════════════════════════
+
+  // ── Header (Tiny, minimal) ──
+  Widget _buildHeader(BuildContext context, dynamic profile) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Good evening, ${profile.name}',
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: Colors.white.withOpacity(0.6),
+            letterSpacing: 0.3,
+          ),
+        ),
+        Row(
+          children: [
+            _buildTinyIcon(context, Icons.menu_book_rounded, () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const WordListScreen()));
+            }),
+            const SizedBox(width: 16),
+            _buildTinyIcon(context, Icons.settings_rounded, () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
+            }),
+          ],
+        )
+      ],
+    );
+  }
+
+  Widget _buildTinyIcon(BuildContext context, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Icon(icon, size: 16, color: Colors.white.withOpacity(0.4)),
+    );
+  }
+
+  // ── Giant Progress Ring ──
+  Widget _buildGiantProgressRing(dynamic profile, List<Word> words) {
+    final now = DateTime.now();
+    final todayCount = words.where((w) {
+      if (w.reviewedAt == null) return false;
+      final d = w.reviewedAt!;
+      return d.year == now.year && d.month == now.month && d.day == now.day;
+    }).length;
+    final target = profile.dailyTarget;
+    final double progress = target > 0 ? (todayCount / target).clamp(0.0, 1.0) : 0.0;
+    
+    return SizedBox(
+      width: 160,
+      height: 160,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: 160,
+            height: 160,
+            child: CircularProgressIndicator(
+              value: progress == 0 ? 0.005 : progress,
+              strokeWidth: 3, // Very thin stroke
+              backgroundColor: const Color(0xFF1A1A1A),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE10600)),
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$todayCount',
+                style: GoogleFonts.outfit(
+                  fontSize: 64,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  height: 1.0,
+                  letterSpacing: -2.0,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '/ $target',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Minimal Stats Line ──
+  Widget _buildMinimalStatsLine(dynamic profile, int masteredCount) {
+    final int streak = profile.streakDays is int ? profile.streakDays : 0;
+    return Text(
+      '🔥 $streak日  •  $masteredCount語 習得済',
+      style: GoogleFonts.outfit(
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+        color: Colors.white.withOpacity(0.5),
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+
+  // ── Full-bleed Session Band ──
+  Widget _buildSessionBand(BuildContext context, int totalWordsCount, dynamic profile) {
     final interest = profile.interests.isNotEmpty ? profile.interests.first : '';
     final hasKey = profile.apiKey.isNotEmpty;
     final subText = hasKey && interest.isNotEmpty
         ? 'あなたの興味（$interest）に基づいた例文で学習を開始'
-        : 'タップして表裏をめくり、スワイプで覚えたか分類';
+        : '暗記カードで学習を開始';
 
-    return Stack(
-      children: [
-        Container(
+    return Material(
+      color: const Color(0xFFE10600), // Deep red, no padding around it, no radius
+      child: InkWell(
+        onTap: () {
+          _startLearning(
+            context,
+            totalWordsCount,
+            isTest: false,
+            isSpelling: false,
+            screenBuilder: (config) => CardLearningScreen(config: config),
+          );
+        },
+        child: Container(
           width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppTheme.primary, Color(0xFF1E0100), AppTheme.surface],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.primary.withOpacity(0.3), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primary.withOpacity(0.2),
-                blurRadius: 12,
-                spreadRadius: 1,
-                offset: const Offset(0, 4),
-              )
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                _startLearning(
-                  context,
-                  totalWordsCount,
-                  isTest: false,
-                  isSpelling: false,
-                  screenBuilder: (config) => CardLearningScreen(config: config),
-                );
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 18.0),
+          height: 80,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            children: [
+              Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: const BoxDecoration(
-                        color: Colors.white10,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.sports_score_rounded, color: Colors.white, size: 28),
-                    ),
-                    const SizedBox(height: 8),
                     Text(
-                      'RACE START',
-                      style: GoogleFonts.orbitron(
+                      'SESSION',
+                      style: GoogleFonts.outfit(
                         fontSize: 20,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         color: Colors.white,
                         letterSpacing: 1.5,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '暗記カードでセッションを開始',
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
                       subText,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.white.withOpacity(0.65),
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white.withOpacity(0.8),
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
-        ),
-        if (!hasKey)
-          Positioned(
-            top: 14,
-            right: 14,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 10),
-                  const SizedBox(width: 4),
-                  Text(
+              if (!hasKey)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12.0),
+                  child: Text(
                     'モック動作中',
                     style: GoogleFonts.outfit(
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.redAccent,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black.withOpacity(0.5),
                     ),
                   ),
-                ],
+                ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: Colors.white.withOpacity(0.5),
+                size: 16,
               ),
-            ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ── Mode List (Card-less) ──
+  Widget _buildModeList(BuildContext context, int totalWordsCount) {
+    return Column(
+      children: [
+        _buildListDivider(),
+        _buildListItem(
+          icon: Icons.speed_rounded,
+          title: 'QUIZ',
+          subtitle: '4択テストで瞬発力を測定',
+          onTap: () => _startLearning(
+            context, totalWordsCount,
+            isTest: true, isSpelling: false,
+            screenBuilder: (config) => QuizTestScreen(config: config),
+          ),
+        ),
+        _buildListDivider(),
+        _buildListItem(
+          icon: Icons.edit_rounded,
+          title: 'SPELL',
+          subtitle: 'スペルテストで正確性を強化',
+          onTap: () => _startLearning(
+            context, totalWordsCount,
+            isTest: true, isSpelling: true,
+            screenBuilder: (config) => SpellingTestScreen(config: config),
+          ),
+        ),
+        _buildListDivider(),
+        _buildListItem(
+          icon: Icons.headset_mic_rounded,
+          title: 'RADIO',
+          subtitle: 'AIが自動で無線会話に組み込み',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const ChatTestScreen()),
+          ),
+        ),
+        _buildListDivider(),
       ],
     );
   }
 
-  Widget _buildSubActionCard({
-    required BuildContext context,
-    required String title,
-    String? description,
+  Widget _buildListItem({
     required IconData icon,
-    required Color color,
+    required String title,
+    required String subtitle,
     required VoidCallback onTap,
   }) {
-    final bool hasDesc = description != null;
-    return Container(
-      height: hasDesc ? 76 : 110,
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            child: Row(
-              mainAxisAlignment: hasDesc ? MainAxisAlignment.start : MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: color.withOpacity(0.25)),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.orbitron(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.textPrimary,
-                          letterSpacing: 0.5,
-                        ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: Colors.white.withOpacity(0.4)),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
                       ),
-                      if (hasDesc) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          description,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppTheme.textSecondary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        )
-                      ]
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.4),
+                      ),
+                    ),
+                  ],
                 ),
-                if (hasDesc) const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary, size: 20),
-              ],
-            ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white.withOpacity(0.3),
+                size: 20,
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildMiniFooter(int masteredCount, int totalCount) {
+  Widget _buildListDivider() {
+    return Container(
+      height: 1,
+      color: Colors.white.withOpacity(0.05), // Hairline dark grey
+    );
+  }
+
+  // ── Footer ──
+  Widget _buildFooter(int masteredCount, int totalCount) {
     final percent = totalCount > 0 ? (masteredCount / totalCount * 100).toStringAsFixed(1) : '0';
-    return Padding(
-      padding: const EdgeInsets.only(top: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            '📊 習得状況: $masteredCount / $totalCount 語 ($percent%)',
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-          ),
-          Text(
-            'VocaBA v2.9',
-            style: GoogleFonts.outfit(color: AppTheme.textSecondary.withOpacity(0.5), fontSize: 10),
-          )
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          '$masteredCount / $totalCount語 ($percent%)',
+          style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.3), fontSize: 10),
+        ),
+        Text(
+          'v4.0',
+          style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.3), fontSize: 10),
+        ),
+      ],
     );
   }
 }
 
-// STYLISH LEARNING CONFIG BOTTOM SHEET
+// ═══════════════════════════════════════════════════════════
+// LEARNING CONFIG BOTTOM SHEET (Minimal version)
+// ═══════════════════════════════════════════════════════════
 class _LearningConfigBottomSheet extends StatefulWidget {
   final bool isTest;
   final bool isSpelling;
@@ -744,7 +496,6 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   @override
   void initState() {
     super.initState();
-    // Spelling test is fixed to JP -> EN
     _direction = widget.isSpelling ? LanguageDirection.jaToEn : LanguageDirection.enToJa;
   }
 
@@ -765,244 +516,164 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
 
   @override
   Widget build(BuildContext context) {
+    // A clean, minimal bottom sheet without heavy borders
     return Container(
       decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black54,
-            blurRadius: 20,
-            spreadRadius: 2,
-          )
-        ],
+        color: Color(0xFF141414), // Dark surface
+        borderRadius: BorderRadius.vertical(top: Radius.circular(0)), // Sharp edges or minimal radius. Let's use 0 for brutalism, or very small.
       ),
       padding: EdgeInsets.only(
         left: 24,
         right: 24,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        top: 32,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
       ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Handle bar
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            
             Text(
-              '⚙️ 学習設定',
+              'CONFIGURATION',
               style: GoogleFonts.outfit(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.5),
+                letterSpacing: 2.0,
               ),
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
-            // 1. Language Direction (Only if not spelling test)
             if (!widget.isSpelling) ...[
-              _buildSectionTitle('出題の向き'),
-              const SizedBox(height: 8),
+              _buildSectionTitle('DIRECTION'),
+              const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(
-                    child: _buildChoiceCard(
-                      title: 'EN ➡️ JP',
-                      subtitle: '英語を見て日本語を思い出す',
-                      selected: _direction == LanguageDirection.enToJa,
-                      onTap: () => setState(() => _direction = LanguageDirection.enToJa),
-                    ),
-                  ),
+                  Expanded(child: _buildChoiceItem('EN → JP', _direction == LanguageDirection.enToJa, () => setState(() => _direction = LanguageDirection.enToJa))),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildChoiceCard(
-                      title: 'JP ➡️ EN',
-                      subtitle: '日本語を見て英語を思い出す',
-                      selected: _direction == LanguageDirection.jaToEn,
-                      onTap: () => setState(() => _direction = LanguageDirection.jaToEn),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
-
-            // 2. Range Filter
-            _buildSectionTitle('出題範囲'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildFilterChip('全て', RangeType.all),
-                _buildFilterChip('スターのみ ⭐', RangeType.favorites),
-                _buildFilterChip('未学習のみ', RangeType.unlearned),
-                _buildFilterChip('覚えてない ❌', RangeType.weak),
-                _buildFilterChip('覚えた ⭕', RangeType.mastered),
-                _buildFilterChip('ID範囲指定 🔢', RangeType.customRange),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Range Type Input / Presets
-            if (_rangeType == RangeType.customRange) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _startIdController,
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-                            decoration: InputDecoration(
-                              labelText: '開始 ID',
-                              labelStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Text('〜', style: TextStyle(color: AppTheme.textSecondary)),
-                        ),
-                        Expanded(
-                          child: TextField(
-                            controller: _endIdController,
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-                            decoration: InputDecoration(
-                              labelText: '終了 ID',
-                              labelStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'クイック選択 (100語区切りプリセット)',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-                    ),
-                    const SizedBox(height: 6),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildQuickRangeButton(1, 100),
-                          _buildQuickRangeButton(101, 200),
-                          _buildQuickRangeButton(201, 300),
-                          _buildQuickRangeButton(301, 400),
-                          _buildQuickRangeButton(401, 500),
-                          _buildQuickRangeButton(501, 1000),
-                          _buildQuickRangeButton(1001, widget.totalWordsCount),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-            ] else ...[
-              const SizedBox(height: 8),
-            ],
-
-            // 3. Order Type
-            _buildSectionTitle('出題順'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildOrderChip('ランダム', OrderType.random),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildOrderChip('ID順', OrderType.idOrder),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildOrderChip('アルファベット順', OrderType.alphabetical),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // 4. Question Count (If it is a test)
-            if (widget.isTest) ...[
-              _buildSectionTitle('出題数'),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _buildQuestionCountChip('10問', 10),
-                  const SizedBox(width: 8),
-                  _buildQuestionCountChip('20問', 20),
-                  const SizedBox(width: 8),
-                  _buildQuestionCountChip('30問', 30),
-                  const SizedBox(width: 8),
-                  _buildQuestionCountChip('全問', 9999),
+                  Expanded(child: _buildChoiceItem('JP → EN', _direction == LanguageDirection.jaToEn, () => setState(() => _direction = LanguageDirection.jaToEn))),
                 ],
               ),
               const SizedBox(height: 24),
             ],
 
-            // Start Button
+            _buildSectionTitle('SCOPE'),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFilterChip('ALL', RangeType.all),
+                _buildFilterChip('STAR', RangeType.favorites),
+                _buildFilterChip('NEW', RangeType.unlearned),
+                _buildFilterChip('WEAK', RangeType.weak),
+                _buildFilterChip('MASTERED', RangeType.mastered),
+                _buildFilterChip('CUSTOM', RangeType.customRange),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            if (_rangeType == RangeType.customRange) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _startIdController,
+                      keyboardType: TextInputType.number,
+                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 14),
+                      decoration: _inputDecoration('START ID'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _endIdController,
+                      keyboardType: TextInputType.number,
+                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 14),
+                      decoration: _inputDecoration('END ID'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildQuickRangeButton(1, 100),
+                    _buildQuickRangeButton(101, 200),
+                    _buildQuickRangeButton(201, 300),
+                    _buildQuickRangeButton(301, 400),
+                    _buildQuickRangeButton(401, 500),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ] else ...[
+              const SizedBox(height: 16),
+            ],
+
+            _buildSectionTitle('ORDER'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _buildChoiceItem('RANDOM', _orderType == OrderType.random, () => setState(() => _orderType = OrderType.random))),
+                const SizedBox(width: 12),
+                Expanded(child: _buildChoiceItem('ID', _orderType == OrderType.idOrder, () => setState(() => _orderType = OrderType.idOrder))),
+                const SizedBox(width: 12),
+                Expanded(child: _buildChoiceItem('A-Z', _orderType == OrderType.alphabetical, () => setState(() => _orderType = OrderType.alphabetical))),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            if (widget.isTest) ...[
+              _buildSectionTitle('QUESTIONS'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _buildChoiceItem('10', _questionCount == 10, () => setState(() => _questionCount = 10))),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildChoiceItem('20', _questionCount == 20, () => setState(() => _questionCount = 20))),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildChoiceItem('30', _questionCount == 30, () => setState(() => _questionCount = 30))),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildChoiceItem('ALL', _questionCount == 9999, () => setState(() => _questionCount = 9999))),
+                ],
+              ),
+              const SizedBox(height: 32),
+            ],
+
             SizedBox(
-              height: 54,
+              height: 56,
               child: ElevatedButton(
                 onPressed: () {
                   int startId = int.tryParse(_startIdController.text) ?? 1;
                   int endId = int.tryParse(_endIdController.text) ?? 100;
-                  
                   if (startId < 1) startId = 1;
                   if (endId < startId) endId = startId + 10;
 
-                  final config = LearningConfig(
+                  Navigator.pop(context, LearningConfig(
                     direction: _direction,
                     rangeType: _rangeType,
                     orderType: _orderType,
                     startId: startId,
                     endId: endId,
                     questionCount: _questionCount,
-                  );
-                  Navigator.pop(context, config);
+                  ));
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
+                  backgroundColor: const Color(0xFFE10600),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
                   elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)), // Sharp edges
                 ),
                 child: Text(
-                  '学習を開始する',
+                  'BEGIN',
                   style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.0,
                   ),
                 ),
               ),
@@ -1017,50 +688,36 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
     return Text(
       title,
       style: GoogleFonts.outfit(
-        fontSize: 13,
-        fontWeight: FontWeight.bold,
-        color: AppTheme.textSecondary,
+        fontSize: 10,
+        fontWeight: FontWeight.w600,
+        color: Colors.white.withOpacity(0.3),
+        letterSpacing: 1.0,
       ),
     );
   }
 
-  Widget _buildChoiceCard({
-    required String title,
-    required String subtitle,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildChoiceItem(String title, bool selected, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary.withOpacity(0.12) : AppTheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? AppTheme.primary : Colors.white.withOpacity(0.05),
-            width: 1.5,
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? const Color(0xFFE10600) : Colors.white.withOpacity(0.1),
+              width: 2,
+            ),
           ),
         ),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: selected ? AppTheme.primary : AppTheme.textPrimary,
-              ),
+        child: Center(
+          child: Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+              color: selected ? Colors.white : Colors.white.withOpacity(0.5),
             ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1068,98 +725,53 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
 
   Widget _buildFilterChip(String label, RangeType type) {
     final selected = _rangeType == type;
-    return ChoiceChip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      selected: selected,
-      onSelected: (val) {
-        if (val) {
-          setState(() => _rangeType = type);
-        }
-      },
-      selectedColor: AppTheme.primary.withOpacity(0.2),
-      labelStyle: TextStyle(
-        color: selected ? AppTheme.primary : AppTheme.textPrimary,
-        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-      ),
-      backgroundColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: selected ? AppTheme.primary : Colors.white.withOpacity(0.08),
+    return InkWell(
+      onTap: () => setState(() => _rangeType = type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white.withOpacity(0.1) : Colors.transparent,
+          border: Border.all(color: selected ? Colors.white.withOpacity(0.2) : Colors.white.withOpacity(0.05)),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.outfit(
+            fontSize: 11,
+            color: selected ? Colors.white : Colors.white.withOpacity(0.5),
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildQuickRangeButton(int start, int end) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 6.0),
-      child: OutlinedButton(
-        onPressed: () => _selectQuickRange(start, end),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          minimumSize: Size.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          side: BorderSide(color: Colors.white.withOpacity(0.1)),
+    return InkWell(
+      onTap: () => _selectQuickRange(start, end),
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Text(
           '$start-$end',
-          style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+          style: GoogleFonts.outfit(fontSize: 10, color: Colors.white.withOpacity(0.5)),
         ),
       ),
     );
   }
 
-  Widget _buildOrderChip(String label, OrderType type) {
-    final selected = _orderType == type;
-    return ChoiceChip(
-      label: Container(
-        alignment: Alignment.center,
-        child: Text(label, style: const TextStyle(fontSize: 12)),
-      ),
-      selected: selected,
-      onSelected: (val) {
-        if (val) {
-          setState(() => _orderType = type);
-        }
-      },
-      selectedColor: AppTheme.primary.withOpacity(0.2),
-      labelStyle: TextStyle(
-        color: selected ? AppTheme.primary : AppTheme.textPrimary,
-        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-      ),
-      backgroundColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: selected ? AppTheme.primary : Colors.white.withOpacity(0.08),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuestionCountChip(String label, int count) {
-    final selected = _questionCount == count;
-    return ChoiceChip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      selected: selected,
-      onSelected: (val) {
-        if (val) {
-          setState(() => _questionCount = count);
-        }
-      },
-      selectedColor: AppTheme.primary.withOpacity(0.2),
-      labelStyle: TextStyle(
-        color: selected ? AppTheme.primary : AppTheme.textPrimary,
-        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-      ),
-      backgroundColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: selected ? AppTheme.primary : Colors.white.withOpacity(0.08),
-        ),
-      ),
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: GoogleFonts.outfit(color: Colors.white.withOpacity(0.3), fontSize: 10, letterSpacing: 1.0),
+      filled: true,
+      fillColor: Colors.black,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFE10600))),
     );
   }
 }

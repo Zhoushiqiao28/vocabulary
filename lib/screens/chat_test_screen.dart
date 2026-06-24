@@ -104,7 +104,13 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('メッセージ送信エラー')),
+          SnackBar(
+            content: Text(
+              'ERROR SENDING MESSAGE',
+              style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: AppTheme.error,
+          ),
         );
       }
     } finally {
@@ -122,15 +128,23 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
     final chatHistory = ref.watch(aiVocaChatProvider);
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
+        backgroundColor: AppTheme.background,
+        elevation: 0,
+        shape: Border(bottom: BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity))),
         title: Text(
-          '💬 AI特訓チャット',
-          style: GoogleFonts.outfit(fontSize: 16),
+          'AI CHAT',
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 2,
+          ),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep_rounded),
-            tooltip: '会話履歴をクリア',
+            tooltip: 'CLEAR HISTORY',
             onPressed: () {
               ref.read(aiVocaChatProvider.notifier).clearHistory();
             },
@@ -147,7 +161,7 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
                   ? _buildEmptyState()
                   : ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.zero,
                       itemCount: chatHistory.length + (_isSending ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (index == chatHistory.length && _isSending) {
@@ -176,29 +190,30 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome_rounded, color: AppTheme.secondary, size: 14),
-              const SizedBox(width: 6),
+              const Icon(Icons.my_location_rounded, color: AppTheme.primary, size: 16),
+              const SizedBox(width: 8),
               Text(
-                '今日の暗記ターゲット単語（会話で使ってみましょう）',
+                'TARGET VOCABULARY',
                 style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
                   color: AppTheme.textSecondary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           SizedBox(
             height: 36,
             child: ListView.separated(
@@ -208,68 +223,66 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
               itemBuilder: (context, index) {
                 final word = _targetWords[index];
                 
-                Color badgeBg = Colors.white10;
-                Color textColor = AppTheme.textPrimary;
+                Color chipColor;
                 String label = '';
 
                 if (word.status == 2) {
-                  badgeBg = Colors.redAccent.withOpacity(0.12);
-                  textColor = Colors.redAccent;
-                  label = '苦手';
+                  chipColor = AppTheme.error;
+                  label = 'WEAK';
                 } else if (word.reviewedAt != null && 
                            word.reviewedAt!.year == today.year &&
                            word.reviewedAt!.month == today.month &&
                            word.reviewedAt!.day == today.day) {
-                  badgeBg = Colors.teal.withOpacity(0.12);
-                  textColor = Colors.tealAccent;
-                  label = '今日学習';
+                  chipColor = AppTheme.success;
+                  label = 'TODAY';
                 } else if (word.status == 0) {
-                  badgeBg = AppTheme.primary.withOpacity(0.15);
-                  textColor = AppTheme.secondary;
-                  label = '未習得';
+                  chipColor = AppTheme.info;
+                  label = 'NEW';
                 } else {
-                  badgeBg = Colors.orangeAccent.withOpacity(0.12);
-                  textColor = Colors.orangeAccent;
-                  label = '復習';
+                  chipColor = AppTheme.warning;
+                  label = 'REVIEW';
                 }
 
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: badgeBg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: textColor.withOpacity(0.3)),
+                    border: Border.all(color: chipColor.withOpacity(AppTheme.opStrong)),
+                    color: chipColor.withOpacity(AppTheme.opSubtle),
+                    borderRadius: BorderRadius.zero,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        word.spelling,
+                        word.spelling.toUpperCase(),
                         style: GoogleFonts.outfit(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: textColor,
+                          color: chipColor,
+                          letterSpacing: 1,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Text(
-                        '(${word.meaningJa})',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: textColor.withOpacity(0.8),
+                        word.meaningJa,
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
                         ),
                       ),
                       if (label.isNotEmpty) ...[
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: textColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          color: chipColor,
                           child: Text(
                             label,
-                            style: TextStyle(color: textColor, fontSize: 8, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.outfit(
+                              color: AppTheme.background,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ]
@@ -291,27 +304,21 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.primary.withOpacity(0.05),
-              ),
-              child: const Icon(Icons.chat_bubble_outline_rounded, color: AppTheme.primary, size: 48),
-            ),
-            const SizedBox(height: 20),
+            const Icon(Icons.chat_bubble_outline_rounded, color: AppTheme.primary, size: 64),
+            const SizedBox(height: 24),
             Text(
-              'チャット練習を始めましょう！',
+              'NO MESSAGES YET',
               style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
                 color: AppTheme.textPrimary,
+                letterSpacing: 2,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
-              '「Hello!」などと入力して送信すると、AIから英会話がスタートします。',
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              'START TYPING TO INITIATE CONVERSATION',
+              style: GoogleFonts.outfit(color: AppTheme.textSecondary, fontSize: 12, letterSpacing: 1),
               textAlign: TextAlign.center,
             ),
           ],
@@ -321,58 +328,68 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
   }
 
   Widget _buildMessageBubble(ChatMessage msg, int index, bool isUser) {
-    return Column(
-      crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!isUser) ...[
-              Container(
-                width: 32,
-                height: 32,
-                margin: const EdgeInsets.only(right: 8),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.primary,
-                ),
-                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
-              ),
-            ],
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isUser ? Colors.white.withOpacity(0.06) : AppTheme.primary.withOpacity(0.15),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(16),
-                    topRight: const Radius.circular(16),
-                    bottomLeft: Radius.circular(isUser ? 16 : 4),
-                    bottomRight: Radius.circular(isUser ? 4 : 16),
-                  ),
-                  border: Border.all(
-                    color: isUser ? Colors.white.withOpacity(0.03) : AppTheme.primary.withOpacity(0.3),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      decoration: BoxDecoration(
+        color: isUser ? AppTheme.background : AppTheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity),
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isUser) ...[
+                Text(
+                  'AI',
+                  style: GoogleFonts.outfit(
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    letterSpacing: 1,
                   ),
                 ),
+                const SizedBox(width: 16),
+              ],
+              Flexible(
                 child: Text(
                   msg.text,
-                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15, height: 1.4),
+                  style: GoogleFonts.outfit(
+                    color: isUser ? AppTheme.textSecondary : AppTheme.textPrimary,
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
+                  textAlign: isUser ? TextAlign.right : TextAlign.left,
                 ),
               ),
-            ),
+              if (isUser) ...[
+                const SizedBox(width: 16),
+                Text(
+                  'YOU',
+                  style: GoogleFonts.outfit(
+                    color: AppTheme.textMuted,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          
+          if (!isUser && msg.needsCorrection && msg.correctedText != null) ...[
+            const SizedBox(height: 24),
+            _buildCorrectionAccordion(msg, index),
           ],
-        ),
-        
-        if (!isUser && msg.needsCorrection && msg.correctedText != null) ...[
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.only(left: 40.0, bottom: 12.0),
-            child: _buildCorrectionAccordion(msg, index),
-          )
         ],
-        const SizedBox(height: 16),
-      ],
+      ),
     );
   }
 
@@ -381,9 +398,9 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
     
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1428),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.accent.withOpacity(0.2)),
+        color: AppTheme.background,
+        borderRadius: BorderRadius.zero,
+        border: Border.all(color: AppTheme.info.withOpacity(AppTheme.opStrong)),
       ),
       child: Column(
         children: [
@@ -397,29 +414,30 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
                 }
               });
             },
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.zero,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.spellcheck_rounded, color: AppTheme.accent, size: 18),
+                      const Icon(Icons.spellcheck_rounded, color: AppTheme.info, size: 16),
                       const SizedBox(width: 8),
                       Text(
-                        'AIによる表現の修正があります',
+                        'CORRECTION AVAILABLE',
                         style: GoogleFonts.outfit(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.accent,
+                          color: AppTheme.info,
+                          letterSpacing: 1,
                         ),
                       ),
                     ],
                   ),
                   Icon(
-                    isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                    color: AppTheme.accent,
+                    isExpanded ? Icons.remove_rounded : Icons.add_rounded,
+                    color: AppTheme.info,
                     size: 20,
                   )
                 ],
@@ -429,32 +447,33 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
           
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+            secondChild: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16, top: 4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Divider(color: Colors.white12),
-                  const SizedBox(height: 8),
+                  Divider(color: AppTheme.info.withOpacity(AppTheme.opMedium), height: 1),
+                  const SizedBox(height: 12),
                   
-                  const Text('修正後：', style: TextStyle(fontSize: 11, color: AppTheme.secondary, fontWeight: FontWeight.bold)),
+                  Text('CORRECTED:', style: GoogleFonts.outfit(fontSize: 10, color: AppTheme.info, fontWeight: FontWeight.bold, letterSpacing: 1)),
                   const SizedBox(height: 4),
                   Text(
                     msg.correctedText!,
                     style: GoogleFonts.outfit(
-                      fontSize: 14,
+                      fontSize: 15,
                       color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   
                   if (msg.explanation != null) ...[
-                    const Text('解説：', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+                    Text('EXPLANATION:', style: GoogleFonts.outfit(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.bold, letterSpacing: 1)),
                     const SizedBox(height: 4),
                     Text(
                       msg.explanation!,
-                      style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
+                      style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textSecondary, height: 1.4),
                     ),
                   ],
                 ],
@@ -469,40 +488,33 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
   }
 
   Widget _buildAILoadingBubble() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity),
+          ),
+        ),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            margin: const EdgeInsets.only(right: 8),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
+          Text(
+            'AI',
+            style: GoogleFonts.outfit(
               color: AppTheme.primary,
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+              letterSpacing: 1,
             ),
-            child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-                bottomLeft: Radius.circular(4),
-                bottomRight: Radius.circular(16),
-              ),
-              border: Border.all(color: AppTheme.primary.withOpacity(0.15)),
-            ),
-            child: const SizedBox(
-              width: 40,
-              height: 20,
-              child: Center(
-                child: SpinKitThreeBounce(color: AppTheme.secondary, size: 15),
-              ),
-            ),
+          const SizedBox(width: 16),
+          const SizedBox(
+            height: 24,
+            child: SpinKitThreeBounce(color: AppTheme.primary, size: 16),
           ),
         ],
       ),
@@ -511,11 +523,11 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
 
   Widget _buildInputBar() {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity))),
       ),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           Expanded(
@@ -523,33 +535,38 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
               controller: _msgController,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _sendMessage(),
-              style: const TextStyle(color: AppTheme.textPrimary),
+              style: GoogleFonts.outfit(color: AppTheme.textPrimary, fontSize: 16),
               decoration: InputDecoration(
-                hintText: '英文メッセージを入力してください...',
-                hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.4), fontSize: 14),
+                hintText: 'TYPE MESSAGE...',
+                hintStyle: GoogleFonts.outfit(color: AppTheme.textSecondary.withOpacity(AppTheme.opBold), fontSize: 14, letterSpacing: 1),
                 filled: true,
-                fillColor: Colors.black26,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+                fillColor: AppTheme.background,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                border: const OutlineInputBorder(
+                  borderRadius: BorderRadius.zero,
+                  borderSide: BorderSide.none,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: const BorderSide(color: AppTheme.primary),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.zero,
+                  borderSide: BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity)),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.zero,
+                  borderSide: BorderSide(color: AppTheme.primary, width: 2),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppTheme.primary,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.send_rounded, color: Colors.white),
-              onPressed: _sendMessage,
+          const SizedBox(width: 16),
+          Material(
+            color: AppTheme.primary,
+            borderRadius: BorderRadius.zero,
+            child: InkWell(
+              onTap: _sendMessage,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: const Icon(Icons.send_rounded, color: Colors.white),
+              ),
             ),
           )
         ],

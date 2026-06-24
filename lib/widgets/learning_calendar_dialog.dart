@@ -22,16 +22,12 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(16),
+      insetPadding: const EdgeInsets.all(AppTheme.sp16),
       child: Container(
         width: double.infinity,
         constraints: const BoxConstraints(maxWidth: 360),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          border: Border.all(color: AppTheme.borderColor),
-          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        ),
-        padding: const EdgeInsets.all(20),
+        decoration: AppTheme.cardDecoration(color: AppTheme.surface, radius: AppTheme.radiusLg),
+        padding: const EdgeInsets.all(AppTheme.sp20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -41,72 +37,76 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'MATRIX_LED_CALENDAR // DICTIONARY_LOG',
-                  style: GoogleFonts.shareTechMono(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primary,
-                    letterSpacing: 0.5,
+                  '学習カレンダー',
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 16, color: AppTheme.textSecondary),
+                  icon: const Icon(Icons.close_rounded, size: 20, color: AppTheme.textSecondary),
                   onPressed: () => Navigator.of(context).pop(),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
-            const Divider(color: AppTheme.borderColor),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppTheme.sp16),
 
-            // Month Selector (styled as tactile toggle block)
+            // Month Selector
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                TactileButton(
-                  width: 38,
-                  height: 32,
+                IconButton(
                   onPressed: () {
                     setState(() {
                       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
                     });
                   },
-                  child: const Icon(Icons.chevron_left_rounded, size: 16, color: AppTheme.textPrimary),
+                  icon: const Icon(Icons.chevron_left_rounded, size: 20, color: AppTheme.textPrimary),
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppTheme.elevated,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm)),
+                  ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: AppTheme.displayDecoration(glow: false),
+                  padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp16, vertical: AppTheme.sp8),
+                  decoration: AppTheme.cardDecoration(color: AppTheme.elevated, radius: AppTheme.radiusSm),
                   child: Text(
-                    '${_currentMonth.year} // ${_currentMonth.month.toString().padLeft(2, '0')}',
-                    style: GoogleFonts.shareTechMono(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
+                    '${_currentMonth.year}年 ${_currentMonth.month}月',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimary,
                     ),
                   ),
                 ),
-                TactileButton(
-                  width: 38,
-                  height: 32,
+                IconButton(
                   onPressed: () {
                     setState(() {
                       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
                     });
                   },
-                  child: const Icon(Icons.chevron_right_rounded, size: 16, color: AppTheme.textPrimary),
+                  icon: const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textPrimary),
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppTheme.elevated,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm)),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppTheme.sp24),
 
             // Calendar Grid display
             _buildCalendarGrid(words, profile.dailyTarget),
             
-            const SizedBox(height: 20),
+            const SizedBox(height: AppTheme.sp24),
 
-            // Summary Bottom (VFD streak details)
+            // Summary Bottom
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: AppTheme.displayDecoration(glow: false),
+              padding: const EdgeInsets.all(AppTheme.sp16),
+              decoration: AppTheme.cardDecoration(color: AppTheme.elevated, radius: AppTheme.radiusMd),
               child: Row(
                 children: [
                   Expanded(
@@ -114,26 +114,26 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'CONTINUITY STREAK READOUT',
-                          style: GoogleFonts.shareTechMono(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
+                          '連続学習記録',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
                             color: AppTheme.textSecondary,
-                            letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppTheme.sp4),
                         Text(
-                          'STREAK: ${profile.streakDays.toString().padLeft(2, '0')} DAYS ACTIVE',
-                          style: GoogleFonts.shareTechMono(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                          '${profile.streakDays} 日連続学習中！',
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
                             color: AppTheme.warning,
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const Icon(Icons.local_fire_department_rounded, color: AppTheme.warning, size: 32),
                 ],
               ),
             ),
@@ -144,7 +144,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
   }
 
   Widget _buildCalendarGrid(List<Word> words, int dailyTarget) {
-    final weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final weekdays = ['月', '火', '水', '木', '金', '土', '日'];
     
     final firstDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month, 1);
     final lastDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
@@ -171,13 +171,13 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: weekdays.map((day) => 
           SizedBox(
-            width: 28,
+            width: 32,
             child: Center(
               child: Text(
                 day,
-                style: GoogleFonts.shareTechMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                   color: AppTheme.textMuted,
                 ),
               ),
@@ -187,7 +187,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
       ),
     );
     
-    rows.add(const SizedBox(height: 8));
+    rows.add(const SizedBox(height: AppTheme.sp12));
 
     // Calendar cells
     int currentDay = 1;
@@ -195,9 +195,9 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
       List<Widget> weekCells = [];
       for (int j = 1; j <= 7; j++) {
         if (i == 0 && j < firstWeekday) {
-          weekCells.add(const SizedBox(width: 28, height: 28));
+          weekCells.add(const SizedBox(width: 32, height: 32));
         } else if (currentDay > lastDayOfMonth.day) {
-          weekCells.add(const SizedBox(width: 28, height: 28));
+          weekCells.add(const SizedBox(width: 32, height: 32));
         } else {
           final count = reviewCounts[currentDay] ?? 0;
           final isToday = isCurrentMonth && currentDay == today.day;
@@ -213,7 +213,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
           children: weekCells,
         ),
       );
-      rows.add(const SizedBox(height: 4));
+      rows.add(const SizedBox(height: AppTheme.sp8));
       
       if (currentDay > lastDayOfMonth.day) break;
     }
@@ -222,53 +222,44 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
   }
 
   Widget _buildDayCell(int day, int count, int dailyTarget, bool isToday) {
-    Color ledColor = AppTheme.success.withOpacity(0.04);
+    Color bgColor = Colors.transparent;
     Color textColor = AppTheme.textSecondary;
     Border? border;
-    List<BoxShadow>? shadows;
     
     if (count > 0) {
       if (count >= dailyTarget) {
-        ledColor = AppTheme.success;
-        textColor = AppTheme.displayBg;
-        shadows = [
-          BoxShadow(
-            color: AppTheme.success.withOpacity(0.6),
-            blurRadius: 4,
-            spreadRadius: 0.5,
-          )
-        ];
+        bgColor = AppTheme.success;
+        textColor = Colors.white;
       } else if (count >= dailyTarget / 2) {
-        ledColor = AppTheme.success.withOpacity(0.5);
-        textColor = AppTheme.textPrimary;
+        bgColor = AppTheme.success.withValues(alpha: 0.5);
+        textColor = Colors.white;
       } else {
-        ledColor = AppTheme.success.withOpacity(0.2);
+        bgColor = AppTheme.success.withValues(alpha: 0.2);
         textColor = AppTheme.success;
       }
     }
 
     if (isToday) {
-      border = Border.all(color: AppTheme.primary, width: 1.0);
+      border = Border.all(color: AppTheme.primary, width: 1.5);
       if (count == 0) {
         textColor = AppTheme.primary;
       }
     }
 
     return Container(
-      width: 28,
-      height: 28,
+      width: 32,
+      height: 32,
       decoration: BoxDecoration(
-        color: ledColor,
+        color: bgColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: border,
-        boxShadow: shadows,
       ),
       child: Center(
         child: Text(
-          day.toString().padLeft(2, '0'),
-          style: GoogleFonts.shareTechMono(
-            fontSize: 10,
-            fontWeight: isToday || count > 0 ? FontWeight.bold : FontWeight.normal,
+          day.toString(),
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            fontWeight: isToday || count > 0 ? FontWeight.w600 : FontWeight.w500,
             color: textColor,
           ),
         ),

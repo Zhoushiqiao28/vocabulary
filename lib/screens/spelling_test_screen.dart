@@ -26,7 +26,7 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
   final FocusNode _focusNode = FocusNode();
   final FocusNode _keyboardFocusNode = FocusNode();
   Timer? _transitionTimer;
-  
+
   bool _hasChecked = false;
   bool _isCorrect = false;
   bool _showHint = false;
@@ -202,11 +202,23 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
     if (_testWords.isEmpty) {
       return Scaffold(
         backgroundColor: AppTheme.background,
-        appBar: AppBar(title: const Text('SPELLING ASSESSMENT')),
+        appBar: AppBar(
+          title: Text(
+            'スペリングテスト',
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+        ),
         body: Center(
           child: Text(
-            'STATUS: NO WORDS MATCHED CONFIGURATION.',
-            style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary),
+            '条件に一致する単語が見つかりませんでした',
+            style: GoogleFonts.outfit(
+              color: AppTheme.textSecondary,
+              fontSize: 15,
+            ),
           ),
         ),
       );
@@ -217,7 +229,7 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
     }
 
     final targetWord = _testWords[_currentIndex];
-    final hintText = targetWord.spelling.isNotEmpty 
+    final hintText = targetWord.spelling.isNotEmpty
         ? '${targetWord.spelling[0]}${'_' * (targetWord.spelling.length - 1)}'
         : '';
 
@@ -236,11 +248,15 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
         backgroundColor: AppTheme.background,
         appBar: AppBar(
           title: Text(
-            'SPELLING_DICTATION // MODULE_${_currentIndex + 1}_OF_${_testWords.length}',
-            style: GoogleFonts.shareTechMono(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+            'スペリングテスト  ${_currentIndex + 1} / ${_testWords.length}',
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
           ),
           leading: IconButton(
-            icon: const Icon(Icons.close_rounded, size: 16),
+            icon: const Icon(Icons.close_rounded, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -248,111 +264,107 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // LED Progress bar segments
-              Row(
-                children: List.generate(20, (i) {
-                  final progress = (_currentIndex + 1) / _testWords.length;
-                  final isLit = (i / 20.0) < progress;
-                  return Expanded(
-                    child: Container(
-                      height: 4,
-                      margin: const EdgeInsets.only(right: 1.0),
-                      decoration: BoxDecoration(
-                        color: isLit ? AppTheme.primary : AppTheme.borderColor,
-                        boxShadow: isLit
-                            ? [
-                                BoxShadow(
-                                  color: AppTheme.primary.withOpacity(0.5),
-                                  blurRadius: 2,
-                                )
-                              ]
-                            : null,
-                      ),
-                    ),
-                  );
-                }),
+              // Progress bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                child: LinearProgressIndicator(
+                  value: (_currentIndex + 1) / _testWords.length,
+                  minHeight: 3,
+                  backgroundColor: AppTheme.borderColor,
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                ),
               ),
+
               const Spacer(),
 
-              // VFD Glass display question
+              // Question area
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp24),
                 child: Container(
-                  height: 180,
-                  decoration: AppTheme.displayDecoration(glow: true),
-                  padding: const EdgeInsets.all(24.0),
-                  alignment: Alignment.center,
+                  decoration: AppTheme.cardDecoration(radius: AppTheme.radiusLg),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.sp24,
+                    vertical: AppTheme.sp32,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Japanese meaning prompt
                       Text(
                         targetWord.meaningJa,
-                        style: GoogleFonts.shareTechMono(
+                        style: GoogleFonts.outfit(
                           fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                           color: AppTheme.textPrimary,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 20),
-        
+                      const SizedBox(height: AppTheme.sp20),
+
+                      // Hint / Answer / Hint Button
                       if (_showHint || _hasChecked)
-                        Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                (_hasChecked ? targetWord.spelling : hintText).toUpperCase(),
-                                style: GoogleFonts.spaceMono(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2,
-                                  color: _hasChecked
-                                      ? (_isCorrect ? AppTheme.success : AppTheme.error)
-                                      : AppTheme.primary,
-                                ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _hasChecked ? targetWord.spelling : hintText,
+                              style: GoogleFonts.outfit(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.5,
+                                color: _hasChecked
+                                    ? (_isCorrect ? AppTheme.success : AppTheme.error)
+                                    : AppTheme.info,
                               ),
-                              if (_hasChecked) ...[
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  icon: const Icon(Icons.volume_up_rounded, size: 16, color: AppTheme.textSecondary),
-                                  onPressed: () => _speak(targetWord.spelling),
+                            ),
+                            if (_hasChecked) ...[
+                              const SizedBox(width: AppTheme.sp8),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.volume_up_rounded,
+                                  size: 20,
+                                  color: AppTheme.textSecondary,
                                 ),
-                              ],
+                                onPressed: () => _speak(targetWord.spelling),
+                              ),
                             ],
-                          ),
+                          ],
                         )
                       else
-                        TactileButton(
-                          width: 140,
-                          height: 32,
+                        TextButton.icon(
                           onPressed: () {
                             setState(() {
                               _showHint = true;
                             });
                             _speak(targetWord.spelling);
                           },
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.help_outline_rounded, size: 12, color: AppTheme.textPrimary),
-                              const SizedBox(width: 6),
-                              Text(
-                                'SHOW FIRST LETTER',
-                                style: GoogleFonts.shareTechMono(fontSize: 10, color: AppTheme.textPrimary),
-                              ),
-                            ],
+                          icon: const Icon(
+                            Icons.lightbulb_outline_rounded,
+                            size: 16,
+                            color: AppTheme.info,
+                          ),
+                          label: Text(
+                            'ヒントを表示',
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppTheme.info,
+                            ),
                           ),
                         ),
                     ],
                   ),
                 ),
               ),
+
               const Spacer(),
-        
-              // Green prompt terminal text field input box
+
+              // Input area
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.sp24,
+                  vertical: AppTheme.sp16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -364,45 +376,78 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
                       enabled: !_hasChecked,
                       autocorrect: false,
                       enableSuggestions: false,
-                      style: GoogleFonts.spaceMono(
+                      style: GoogleFonts.outfit(
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: _hasChecked 
+                        fontWeight: FontWeight.w600,
+                        color: _hasChecked
                             ? (_isCorrect ? AppTheme.success : AppTheme.error)
-                            : AppTheme.primary,
+                            : AppTheme.textPrimary,
                       ),
                       textAlign: TextAlign.center,
                       decoration: InputDecoration(
-                        prefixText: 'SYS_IN > ',
-                        prefixStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 13),
-                        hintText: 'TYPE SPELLING HERE...',
-                        hintStyle: GoogleFonts.shareTechMono(color: AppTheme.textMuted, fontSize: 13),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        hintText: 'スペルを入力...',
+                        hintStyle: GoogleFonts.outfit(
+                          color: AppTheme.textMuted,
+                          fontSize: 15,
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.surface,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: AppTheme.sp16,
+                          horizontal: AppTheme.sp16,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          borderSide: const BorderSide(color: AppTheme.borderColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          borderSide: const BorderSide(color: AppTheme.borderColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+                        ),
+                        disabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          borderSide: BorderSide(
+                            color: _hasChecked
+                                ? (_isCorrect ? AppTheme.success.withOpacity(0.4) : AppTheme.error.withOpacity(0.4))
+                                : AppTheme.borderColor,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    TactileButton(
+                    const SizedBox(height: AppTheme.sp16),
+
+                    // Check / Next button
+                    SizedBox(
                       height: 48,
-                      onPressed: _hasChecked ? _nextQuestion : _checkAnswer,
-                      color: _hasChecked 
-                          ? (_isCorrect ? AppTheme.success : AppTheme.error)
-                          : AppTheme.primary,
-                      ledColor: Colors.white,
-                      isLedOn: true,
-                      child: Text(
-                        _hasChecked ? 'NEXT CHANNEL [Enter]' : 'EXECUTE INPUT [Enter]',
-                        style: GoogleFonts.shareTechMono(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.displayBg,
-                          letterSpacing: 0.5,
+                      child: ElevatedButton(
+                        onPressed: _hasChecked ? _nextQuestion : _checkAnswer,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _hasChecked
+                              ? (_isCorrect ? AppTheme.success : AppTheme.error)
+                              : AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          _hasChecked ? '次へ進む' : '解答する',
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppTheme.sp12),
             ],
           ),
         ),
@@ -412,73 +457,115 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
 
   Widget _buildFinishedScreen() {
     final allCorrect = _wrongWords.isEmpty;
+    final percentage = (_score / _testWords.length * 100).round();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(AppTheme.sp24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
+
+              // Header
               Text(
-                'SPELLING COMPLETE // OUTCOME',
-                style: GoogleFonts.shareTechMono(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                'テスト完了',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                   color: AppTheme.textSecondary,
-                  letterSpacing: 1.0,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppTheme.sp8),
+
+              // Score
               Text(
-                'SCORE: ${_score.toString().padLeft(2, '0')} / ${_testWords.length.toString().padLeft(2, '0')}',
-                style: GoogleFonts.shareTechMono(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
+                '$_score / ${_testWords.length}',
+                style: GoogleFonts.outfit(
+                  fontSize: 42,
+                  fontWeight: FontWeight.w700,
                   color: AppTheme.primary,
-                  letterSpacing: 1.0,
+                  letterSpacing: -1.0,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
-              
-              if (!allCorrect) ...[
-                Text(
-                  '// WEAK CHANNELS LOGGED:',
-                  style: GoogleFonts.shareTechMono(
-                    color: AppTheme.error,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
+              const SizedBox(height: AppTheme.sp4),
+              Text(
+                '$percentage% 正解',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textSecondary,
                 ),
-                const SizedBox(height: 8),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppTheme.sp32),
+
+              if (!allCorrect) ...[
+                // Wrong words header
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.error,
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.sp8),
+                    Text(
+                      '間違えた単語',
+                      style: GoogleFonts.outfit(
+                        color: AppTheme.error,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppTheme.sp12),
+
+                // Wrong words list
                 Expanded(
                   flex: 3,
                   child: Container(
-                    decoration: AppTheme.displayDecoration(glow: false),
-                    child: ListView.builder(
+                    decoration: AppTheme.cardDecoration(radius: AppTheme.radiusMd),
+                    clipBehavior: Clip.antiAlias,
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
                       itemCount: _wrongWords.length,
+                      separatorBuilder: (_, __) => const Divider(
+                        height: 1,
+                        color: AppTheme.borderColor,
+                      ),
                       itemBuilder: (context, index) {
                         final word = _wrongWords[index];
-                        return Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                          decoration: const BoxDecoration(
-                            border: Border(bottom: BorderSide(color: AppTheme.borderColor, width: 0.5)),
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppTheme.sp12,
+                            horizontal: AppTheme.sp16,
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                word.spelling.toUpperCase(),
-                                style: GoogleFonts.spaceMono(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                                word.spelling,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimary,
+                                ),
                               ),
                               Text(
                                 word.meaningJa,
-                                style: GoogleFonts.shareTechMono(fontSize: 11, color: AppTheme.textSecondary),
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                ),
                               ),
                             ],
                           ),
@@ -493,27 +580,33 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
                   child: Column(
                     children: [
                       Container(
-                        width: 14,
-                        height: 14,
-                        decoration: const BoxDecoration(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
+                          color: AppTheme.success.withOpacity(0.12),
+                        ),
+                        child: const Icon(
+                          Icons.check_rounded,
                           color: AppTheme.success,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.success,
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            )
-                          ],
+                          size: 28,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppTheme.sp16),
                       Text(
-                        'CALIBRATION PERFECT // ZERO_ERRORS',
-                        style: GoogleFonts.shareTechMono(
+                        'パーフェクト！',
+                        style: GoogleFonts.outfit(
                           color: AppTheme.success,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.sp4),
+                      Text(
+                        'すべて正解しました',
+                        style: GoogleFonts.outfit(
+                          color: AppTheme.textSecondary,
+                          fontSize: 14,
                         ),
                       ),
                     ],
@@ -521,16 +614,28 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
                 ),
                 const Spacer(),
               ],
+
               const Spacer(),
-              TactileButton(
-                height: 46,
-                onPressed: () => Navigator.pop(context),
-                color: AppTheme.primary,
-                child: Text(
-                  'DISMISS',
-                  style: GoogleFonts.shareTechMono(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.displayBg,
+
+              // Dismiss button
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    '閉じる',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

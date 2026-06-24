@@ -21,7 +21,7 @@ class DashboardScreen extends ConsumerWidget {
       direction: LanguageDirection.enToJa,
       rangeType: RangeType.due,
       orderType: OrderType.random,
-      questionCount: 9999, // Review all due words
+      questionCount: 9999,
     );
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => CardLearningScreen(config: config)),
@@ -59,24 +59,21 @@ class DashboardScreen extends ConsumerWidget {
     final words = ref.watch(wordListProvider);
 
     final now = DateTime.now();
-    // Count reviewed today
     final todayReviewedCount = words.where((w) {
       if (w.reviewedAt == null) return false;
       final d = w.reviewedAt!;
       return d.year == now.year && d.month == now.month && d.day == now.day;
     }).length;
 
-    // Count due words
     final dueWords = words.where((w) {
       return w.nextReviewAt == null || w.nextReviewAt!.isBefore(now);
     }).toList();
 
-    // Stats
     final masteredCount = words.where((w) => w.status == 1).length;
     final weakCount = words.where((w) => w.status == 2).length;
     final unlearnedCount = words.where((w) => w.status == 0).length;
 
-    // Past 7 Days Sparkline Data -> mapped to VFD values
+    // Past 7 days activity data
     final List<int> chartData = List.generate(7, (i) {
       final day = now.subtract(Duration(days: 6 - i));
       return words.where((w) {
@@ -115,32 +112,42 @@ class DashboardScreen extends ConsumerWidget {
   ) {
     return Column(
       children: [
-        // Mobile Header with slit divider
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: AppTheme.borderColor, width: 1.0),
-            ),
-          ),
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp16, vertical: AppTheme.sp12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'VOCABA // CONSOLE_v6.0',
-                style: GoogleFonts.shareTechMono(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primary,
-                  letterSpacing: 1.0,
+                'VocaBA',
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
                 ),
               ),
               Row(
                 children: [
-                  _buildStreakLeds(profile.streakDays),
-                  const SizedBox(width: 12),
+                  if (profile.streakDays > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warning.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                        border: Border.all(color: AppTheme.warning.withOpacity(0.2)),
+                      ),
+                      child: Text(
+                        '${profile.streakDays}日連続',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.warning,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
                   IconButton(
-                    icon: const Icon(Icons.settings_rounded, size: 16, color: AppTheme.textSecondary),
+                    icon: const Icon(Icons.settings_outlined, size: 20, color: AppTheme.textSecondary),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (context) => const SettingsScreen()),
                     ),
@@ -151,35 +158,35 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
 
-        // Scrollable Body
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp16),
             children: [
-              _buildGreeting(profile.name, dueCount),
-              const SizedBox(height: 16),
-              _buildSessionControlPanel(context, dueCount, todayReviewed, profile.dailyTarget, words.length),
-              const SizedBox(height: 24),
-              
-              _buildSectionHeader('VFD SPECTRAM MONITOR (ACTIVITY)'),
-              const SizedBox(height: 8),
-              _buildSpectrumCard(chartData),
-              const SizedBox(height: 24),
+              // Today's Mission Card
+              _buildMissionCard(context, dueCount, todayReviewed, profile.dailyTarget, words.length),
+              const SizedBox(height: AppTheme.sp24),
 
-              _buildSectionHeader('SYSTEM CURRICULUM'),
-              const SizedBox(height: 8),
+              // Activity Chart
+              _buildSectionLabel('今週のアクティビティ'),
+              const SizedBox(height: AppTheme.sp8),
+              _buildActivityChart(chartData),
+              const SizedBox(height: AppTheme.sp24),
+
+              // Stats Row
+              _buildStatsRow(mastered, weak, unlearned, words.length),
+              const SizedBox(height: AppTheme.sp24),
+
+              // Learning Modes
+              _buildSectionLabel('学習モード'),
+              const SizedBox(height: AppTheme.sp8),
               _buildModesPanel(context, words.length),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppTheme.sp24),
 
-              _buildSectionHeader('VOCABULARY COUNTERS'),
-              const SizedBox(height: 8),
-              _buildStatsRow(mastered, weak, unlearned),
-              const SizedBox(height: 24),
-
-              _buildSectionHeader('SYSTEM MEASUREMENT LOG'),
-              const SizedBox(height: 8),
-              _buildRecentWordsTable(context, words),
-              const SizedBox(height: 32),
+              // Recent Words
+              _buildSectionLabel('最近の学習'),
+              const SizedBox(height: AppTheme.sp8),
+              _buildRecentWords(context, words),
+              const SizedBox(height: AppTheme.sp32),
             ],
           ),
         ),
@@ -204,154 +211,184 @@ class DashboardScreen extends ConsumerWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Left Column: Physical Control Sidebar (Width: 260px)
+        // Sidebar
         Container(
-          width: 250,
+          width: 220,
           decoration: const BoxDecoration(
             color: AppTheme.surface,
             border: Border(
               right: BorderSide(color: AppTheme.borderColor, width: 1.0),
             ),
           ),
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(AppTheme.sp20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'VOCABA // CONSOLE_v6.0',
-                style: GoogleFonts.shareTechMono(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primary,
-                  letterSpacing: 0.5,
+                'VocaBA',
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 24),
-              
-              // Sidebar Navigation items (styled like toggle buttons)
-              _buildSidebarItem(context, Icons.dashboard_outlined, 'DASHBOARD', null),
-              _buildSidebarItem(context, Icons.menu_book_rounded, 'LIBRARY_LOG', () {
+              const SizedBox(height: AppTheme.sp32),
+
+              _buildSidebarItem(context, Icons.dashboard_outlined, 'ダッシュボード', null),
+              _buildSidebarItem(context, Icons.menu_book_outlined, '単語ライブラリ', () {
                 Navigator.of(context).push(MaterialPageRoute(builder: (context) => const WordListScreen()));
               }),
-              _buildSidebarItem(context, Icons.headset_mic_rounded, 'RADIO_CHAT', () {
+              _buildSidebarItem(context, Icons.chat_bubble_outline_rounded, 'AIチャット', () {
                 Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ChatTestScreen()));
               }),
-              _buildSidebarItem(context, Icons.settings_rounded, 'SETTINGS', () {
+              _buildSidebarItem(context, Icons.settings_outlined, '設定', () {
                 Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
               }),
-              
+
               const Spacer(),
-              
-              // VFD Sparkline In Sidebar
-              Text(
-                'VFD ACTIVITY SPECTRUM',
-                style: GoogleFonts.shareTechMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textSecondary,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _buildSpectrumCard(chartData),
-              const SizedBox(height: 16),
 
-              // Calendar Heatmap trigger (styled like a physical chassis socket button)
-              TactileButton(
-                height: 34,
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => const LearningCalendarDialog(),
-                  );
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.calendar_today_rounded, size: 12, color: AppTheme.textPrimary),
-                    const SizedBox(width: 8),
-                    Text(
-                      'MATRIX LED CALENDAR',
-                      style: GoogleFonts.shareTechMono(fontSize: 11, color: AppTheme.textPrimary),
+              // Activity chart in sidebar
+              _buildSectionLabel('今週のアクティビティ'),
+              const SizedBox(height: AppTheme.sp8),
+              _buildActivityChart(chartData),
+              const SizedBox(height: AppTheme.sp16),
+
+              // Calendar trigger
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const LearningCalendarDialog(),
+                    );
+                  },
+                  icon: const Icon(Icons.calendar_today_outlined, size: 14),
+                  label: Text('カレンダー', style: GoogleFonts.outfit(fontSize: 13)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.textSecondary,
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                      side: const BorderSide(color: AppTheme.borderColor),
                     ),
-                  ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppTheme.sp16),
 
-              // Profile / Streak at bottom
+              // Profile chip
               Container(
-                padding: const EdgeInsets.all(12.0),
-                decoration: BoxDecoration(
-                  color: AppTheme.displayBg,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  border: Border.all(color: AppTheme.borderColor),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                padding: const EdgeInsets.all(AppTheme.sp12),
+                decoration: AppTheme.cardDecoration(),
+                child: Row(
                   children: [
-                    Text(
-                      'USER: ${profile.name.toUpperCase()}',
-                      style: GoogleFonts.shareTechMono(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.primary.withOpacity(0.15),
                       ),
-                      overflow: TextOverflow.ellipsis,
+                      child: Center(
+                        child: Text(
+                          profile.name.isNotEmpty ? profile.name[0].toUpperCase() : 'U',
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    _buildStreakLeds(profile.streakDays),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile.name,
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (profile.streakDays > 0)
+                            Text(
+                              '${profile.streakDays}日連続',
+                              style: GoogleFonts.outfit(fontSize: 11, color: AppTheme.warning),
+                            ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),
 
-        // Right Column: Main Workspace Panel
+        // Main content area
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(AppTheme.sp24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildGreeting(profile.name, dueCount),
-                const SizedBox(height: 20),
+                // Greeting
+                Text(
+                  'おかえりなさい、${profile.name}さん',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.sp4),
+                Text(
+                  dueCount > 0
+                      ? '復習対象の単語が $dueCount 語あります'
+                      : '今日の復習は完了しています 🎉',
+                  style: GoogleFonts.outfit(
+                    fontSize: 15,
+                    color: dueCount > 0 ? AppTheme.warning : AppTheme.success,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.sp24),
 
-                // Main Session CTA Banner
-                _buildSessionControlPanel(context, dueCount, todayReviewed, profile.dailyTarget, words.length),
-                const SizedBox(height: 24),
+                // Mission Card
+                _buildMissionCard(context, dueCount, todayReviewed, profile.dailyTarget, words.length),
+                const SizedBox(height: AppTheme.sp24),
 
+                // Two columns: Modes + Stats | Recent words
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Left partition: Curriculum & Stats
                     Expanded(
                       flex: 4,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionHeader('SYSTEM CURRICULUM'),
-                          const SizedBox(height: 8),
+                          _buildStatsRow(mastered, weak, unlearned, words.length),
+                          const SizedBox(height: AppTheme.sp24),
+                          _buildSectionLabel('学習モード'),
+                          const SizedBox(height: AppTheme.sp8),
                           _buildModesPanel(context, words.length),
-                          const SizedBox(height: 24),
-                          
-                          _buildSectionHeader('VOCABULARY STATUS'),
-                          const SizedBox(height: 8),
-                          _buildStatsRow(mastered, weak, unlearned),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 24),
-                    // Right partition: Recently Reviewed list
+                    const SizedBox(width: AppTheme.sp24),
                     Expanded(
                       flex: 5,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionHeader('SYSTEM MEASUREMENT LOG'),
-                          const SizedBox(height: 8),
-                          _buildRecentWordsTable(context, words),
+                          _buildSectionLabel('最近の学習'),
+                          const SizedBox(height: AppTheme.sp8),
+                          _buildRecentWords(context, words),
                         ],
                       ),
                     ),
@@ -366,335 +403,306 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // ═══════════════════════════════════════════════
-  // REUSABLE SUB-WIDGETS
+  // REUSABLE WIDGETS
   // ═══════════════════════════════════════════════
 
-  Widget _buildGreeting(String name, int dueCount) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'WELCOME BACK, ${name.toUpperCase()}.',
-          style: GoogleFonts.shareTechMono(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          dueCount > 0
-              ? 'WARNING: $dueCount WORDS ARE CURRENTLY DUE FOR REVIEW.'
-              : 'SYSTEM STATUS: ALL SCHEDULED REVIEWS RECONCILED. NO OUTSTANDING DEBTS.',
-          style: GoogleFonts.shareTechMono(
-            color: dueCount > 0 ? AppTheme.warning : AppTheme.success,
-            fontSize: 11,
-          ),
-        ),
-      ],
+  Widget _buildSectionLabel(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.outfit(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: AppTheme.textSecondary,
+      ),
     );
   }
 
-  // Hardware LED Streak indicator
-  Widget _buildStreakLeds(int streakDays) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: List.generate(7, (i) {
-            final isLit = i < streakDays;
-            return Container(
-              margin: const EdgeInsets.only(right: 4.0),
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isLit ? AppTheme.warning : AppTheme.warning.withOpacity(0.12),
-                boxShadow: isLit
-                    ? [
-                        BoxShadow(
-                          color: AppTheme.warning.withOpacity(0.5),
-                          blurRadius: 3,
-                          spreadRadius: 0.5,
-                        )
-                      ]
-                    : null,
-              ),
-            );
-          }),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'STREAK: $streakDays DAYS ACTIVE',
-          style: GoogleFonts.shareTechMono(
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textSecondary,
-          ),
-        )
-      ],
-    );
-  }
-
-  // Sidebar navigation item
   Widget _buildSidebarItem(BuildContext context, IconData icon, String title, VoidCallback? onTap) {
     final active = onTap == null;
     return Container(
-      margin: const EdgeInsets.only(bottom: 8.0),
-      child: TactileButton(
-        height: 38,
-        onPressed: active ? null : onTap,
-        color: active ? AppTheme.hover : AppTheme.surface,
-        ledColor: AppTheme.primary,
-        isLedOn: active,
-        child: Row(
-          children: [
-            const SizedBox(width: 12),
-            Icon(
-              icon,
-              size: 14,
-              color: active ? AppTheme.primary : AppTheme.textSecondary,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: GoogleFonts.shareTechMono(
-                fontSize: 12,
-                fontWeight: active ? FontWeight.bold : FontWeight.w500,
-                color: active ? AppTheme.textPrimary : AppTheme.textSecondary,
-                letterSpacing: 0.5,
+      margin: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: active ? AppTheme.primary.withOpacity(0.08) : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: active ? AppTheme.primary : AppTheme.textSecondary,
               ),
-            )
-          ],
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                  color: active ? AppTheme.textPrimary : AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Core CTA Session Panel
-  Widget _buildSessionControlPanel(
-    BuildContext context,
-    int dueCount,
-    int todayReviewed,
-    int dailyTarget,
-    int totalWords,
-  ) {
+  // ─── Today's Mission Card ───
+  Widget _buildMissionCard(BuildContext context, int dueCount, int todayReviewed, int dailyTarget, int totalWords) {
+    final missionTotal = dueCount + (dailyTarget > dueCount ? dailyTarget - dueCount : 0);
     final progress = dailyTarget > 0 ? (todayReviewed / dailyTarget).clamp(0.0, 1.0) : 0.0;
+
     return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        border: Border.all(color: AppTheme.borderColor),
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'DAILY SESSION MODULE',
-                  style: GoogleFonts.shareTechMono(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primary,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'LOG: $todayReviewed / $dailyTarget REVIEWS COMPLETED TODAY',
-                  style: GoogleFonts.shareTechMono(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'STATUS: $dueCount DUE WORDS REMAINING IN QUEUE.',
-                  style: GoogleFonts.shareTechMono(
-                    color: AppTheme.textSecondary,
-                    fontSize: 10,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
-                // LED segments styled progress indicator
-                Row(
-                  children: List.generate(20, (i) {
-                    final isLit = (i / 20.0) < progress;
-                    return Expanded(
-                      child: Container(
-                        height: 6,
-                        margin: const EdgeInsets.only(right: 2.0),
-                        decoration: BoxDecoration(
-                          color: isLit ? AppTheme.primary : AppTheme.primary.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(1.0),
-                          boxShadow: isLit
-                              ? [
-                                  BoxShadow(
-                                    color: AppTheme.primary.withOpacity(0.4),
-                                    blurRadius: 2,
-                                  )
-                                ]
-                              : null,
-                        ),
-                      ),
-                    );
-                  }),
-                )
-              ],
-            ),
-          ),
-          const SizedBox(width: 20),
-          TactileButton(
-            width: 140,
-            height: 46,
-            onPressed: () => _startDueReview(context, totalWords),
-            color: dueCount > 0 ? AppTheme.primary : AppTheme.hover,
-            ledColor: Colors.white,
-            isLedOn: dueCount > 0,
-            child: Text(
-              dueCount > 0 ? 'RUN REVIEW ($dueCount)' : 'START SESSION',
-              style: GoogleFonts.shareTechMono(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: dueCount > 0 ? AppTheme.displayBg : AppTheme.textPrimary,
-                letterSpacing: 0.5,
-              ),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.shareTechMono(
-        fontSize: 11,
-        fontWeight: FontWeight.bold,
-        color: AppTheme.textSecondary,
-        letterSpacing: 0.8,
-      ),
-    );
-  }
-
-  // Custom VFD Spectrum Visualizer
-  Widget _buildSpectrumCard(List<int> data) {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      decoration: AppTheme.displayDecoration(glow: true),
-      child: CustomPaint(
-        painter: VFDSpectrumPainter(data),
-        child: Container(),
-      ),
-    );
-  }
-
-  // Stats Counters (Styled as hardware display windows)
-  Widget _buildStatsRow(int mastered, int weak, int unlearned) {
-    return Row(
-      children: [
-        Expanded(child: _buildStatCell('MASTERED', mastered, AppTheme.success)),
-        const SizedBox(width: 8),
-        Expanded(child: _buildStatCell('WEAK', weak, AppTheme.error)),
-        const SizedBox(width: 8),
-        Expanded(child: _buildStatCell('UNLEARNED', unlearned, AppTheme.textSecondary)),
-      ],
-    );
-  }
-
-  Widget _buildStatCell(String title, int count, Color ledColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 14.0),
-      decoration: AppTheme.displayDecoration(glow: false),
+      padding: const EdgeInsets.all(AppTheme.sp20),
+      decoration: AppTheme.cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: GoogleFonts.shareTechMono(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-              // Tiny state indicator LED
-              Container(
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: ledColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: ledColor.withOpacity(0.5),
-                      blurRadius: 2,
-                    )
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Today's Mission",
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.sp4),
+                    RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.outfit(fontSize: 15, color: AppTheme.textPrimary),
+                        children: [
+                          if (dueCount > 0) ...[
+                            TextSpan(
+                              text: '復習 ${dueCount}語',
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            const TextSpan(text: ' が待っています'),
+                          ] else
+                            const TextSpan(
+                              text: '復習完了！新しい単語に挑戦しよう',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.sp12),
+                    // Progress bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 4,
+                        backgroundColor: AppTheme.elevated,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          progress >= 1.0 ? AppTheme.success : AppTheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.sp4),
+                    Text(
+                      '$todayReviewed / $dailyTarget 完了',
+                      style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.textSecondary),
+                    ),
                   ],
                 ),
-              )
+              ),
+              const SizedBox(width: AppTheme.sp16),
+              // Start button
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => _startDueReview(context, totalWords),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: dueCount > 0 ? AppTheme.primary : AppTheme.elevated,
+                    foregroundColor: dueCount > 0 ? Colors.white : AppTheme.textPrimary,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                      side: dueCount > 0 ? BorderSide.none : const BorderSide(color: AppTheme.borderColor),
+                    ),
+                  ),
+                  child: Text(
+                    dueCount > 0 ? '開始 →' : '学習する',
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            count.toString().padLeft(3, '0'),
-            style: GoogleFonts.shareTechMono(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-            ),
-          )
         ],
       ),
     );
   }
 
-  // Menu items for Quiz, Spelling, Radio
+  // ─── Activity Chart (Simple bar chart) ───
+  Widget _buildActivityChart(List<int> data) {
+    final maxVal = data.reduce(max).toDouble();
+    final range = maxVal == 0 ? 1.0 : maxVal;
+    final days = ['月', '火', '水', '木', '金', '土', '日'];
+    final now = DateTime.now();
+
+    return Container(
+      height: 80,
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp8, vertical: AppTheme.sp8),
+      decoration: AppTheme.cardDecoration(),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: List.generate(7, (i) {
+          final ratio = data[i] / range;
+          final dayIndex = (now.subtract(Duration(days: 6 - i)).weekday - 1) % 7;
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (data[i] > 0)
+                    Text(
+                      '${data[i]}',
+                      style: GoogleFonts.outfit(fontSize: 10, color: AppTheme.textSecondary),
+                    ),
+                  const SizedBox(height: 2),
+                  Flexible(
+                    child: FractionallySizedBox(
+                      heightFactor: data[i] > 0 ? ratio.clamp(0.08, 1.0) : 0.04,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: data[i] > 0
+                              ? AppTheme.primary.withOpacity(0.6 + ratio * 0.4)
+                              : AppTheme.elevated,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    days[dayIndex],
+                    style: GoogleFonts.outfit(fontSize: 10, color: AppTheme.textMuted),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ─── Stats Row ───
+  Widget _buildStatsRow(int mastered, int weak, int unlearned, int total) {
+    return Row(
+      children: [
+        Expanded(child: _buildStatCard('習得', mastered, AppTheme.success)),
+        const SizedBox(width: AppTheme.sp8),
+        Expanded(child: _buildStatCard('苦手', weak, AppTheme.error)),
+        const SizedBox(width: AppTheme.sp8),
+        Expanded(child: _buildStatCard('未学習', unlearned, AppTheme.textSecondary)),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.sp16),
+      decoration: AppTheme.cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.textSecondary),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.sp8),
+          Text(
+            count.toString(),
+            style: GoogleFonts.outfit(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Learning Modes ───
   Widget _buildModesPanel(BuildContext context, int totalWords) {
     return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        border: Border.all(color: AppTheme.borderColor),
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      ),
+      decoration: AppTheme.cardDecoration(),
       child: Column(
         children: [
           _buildModeRow(
             context,
-            '01 // RETENTION QUIZ',
-            'MULTIPLE CHOICE RETENTION ASSESSMENT',
+            Icons.style_outlined,
+            'フラッシュカード',
+            '暗記カードで効率的に学習',
+            () => _startLearningConfig(
+              context, totalWords,
+              isTest: false, isSpelling: false,
+              screenBuilder: (config) => CardLearningScreen(config: config),
+            ),
+          ),
+          const Divider(height: 1),
+          _buildModeRow(
+            context,
+            Icons.quiz_outlined,
+            '選択肢クイズ',
+            '4択問題で記憶をテスト',
             () => _startLearningConfig(
               context, totalWords,
               isTest: true, isSpelling: false,
               screenBuilder: (config) => QuizTestScreen(config: config),
             ),
           ),
-          const Divider(height: 1, thickness: 1),
+          const Divider(height: 1),
           _buildModeRow(
             context,
-            '02 // SPELLING DICTATION',
-            'ACTIVE WRITING AND RECALL ASSESSMENT',
+            Icons.edit_outlined,
+            'スペリング',
+            'タイピングで綴りを確認',
             () => _startLearningConfig(
               context, totalWords,
               isTest: true, isSpelling: true,
               screenBuilder: (config) => SpellingTestScreen(config: config),
             ),
           ),
-          const Divider(height: 1, thickness: 1),
+          const Divider(height: 1),
           _buildModeRow(
             context,
-            '03 // AI RADIO CONSOLE',
-            'INTERACTIVE SIMULATED AI COMMUNICATION',
+            Icons.chat_bubble_outline_rounded,
+            'AIチャット',
+            '会話の中で単語を使う練習',
             () => Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const ChatTestScreen()),
             ),
@@ -704,254 +712,151 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildModeRow(BuildContext context, String code, String desc, VoidCallback onTap) {
+  Widget _buildModeRow(BuildContext context, IconData icon, String title, String subtitle, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+        padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp16, vertical: AppTheme.sp12),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              ),
+              child: Icon(icon, size: 18, color: AppTheme.primary),
+            ),
+            const SizedBox(width: AppTheme.sp12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    code,
-                    style: GoogleFonts.shareTechMono(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimary,
-                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 2),
                   Text(
-                    desc,
-                    style: GoogleFonts.shareTechMono(
-                      fontSize: 9,
-                      color: AppTheme.textSecondary,
-                    ),
+                    subtitle,
+                    style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.textSecondary),
                   ),
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 16,
-              color: AppTheme.textSecondary,
-            )
+            const Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.textMuted),
           ],
         ),
       ),
     );
   }
 
-  // Recently Reviewed Data Table (styled like measuring log)
-  Widget _buildRecentWordsTable(BuildContext context, List<Word> words) {
+  // ─── Recent Words ───
+  Widget _buildRecentWords(BuildContext context, List<Word> words) {
     final now = DateTime.now();
-    final reviewedWords = words
-        .where((w) => w.reviewedAt != null)
-        .toList();
+    final reviewedWords = words.where((w) => w.reviewedAt != null).toList();
     reviewedWords.sort((a, b) => b.reviewedAt!.compareTo(a.reviewedAt!));
-    
-    final recent = reviewedWords.take(6).toList();
+    final recent = reviewedWords.take(8).toList();
+
+    if (recent.isEmpty) {
+      return Container(
+        height: 120,
+        decoration: AppTheme.cardDecoration(),
+        child: Center(
+          child: Text(
+            'まだ学習記録がありません',
+            style: GoogleFonts.outfit(color: AppTheme.textSecondary, fontSize: 14),
+          ),
+        ),
+      );
+    }
 
     return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.displayBg,
-        border: Border.all(color: AppTheme.borderColor),
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      ),
-      child: recent.isEmpty
-          ? SizedBox(
-              height: 160,
-              child: Center(
-                child: Text(
-                  'LOG: NO RECORDS IN SYSTEM MEMORY.',
-                  style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 11),
-                ),
-              ),
-            )
-          : Column(
+      decoration: AppTheme.cardDecoration(),
+      child: Column(
+        children: recent.map((word) {
+          final statusColor = AppTheme.statusColor(word.status);
+          final statusLabel = AppTheme.statusLabel(word.status);
+
+          // Next review date
+          String nextReview = '未設定';
+          if (word.nextReviewAt != null) {
+            if (word.nextReviewAt!.isBefore(now)) {
+              nextReview = '復習対象';
+            } else {
+              final diff = word.nextReviewAt!.difference(now).inDays;
+              if (diff == 0) {
+                nextReview = '今日';
+              } else if (diff <= 7) {
+                nextReview = '${diff}日後';
+              } else {
+                nextReview = '${word.nextReviewAt!.month}/${word.nextReviewAt!.day}';
+              }
+            }
+          }
+
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp16, vertical: AppTheme.sp12),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppTheme.borderColor, width: 0.5)),
+            ),
+            child: Row(
               children: [
-                // Table header
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                  color: AppTheme.surface,
-                  child: Row(
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          'INDEX/WORD',
-                          style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                      Text(
+                        word.spelling,
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          'MEANING',
-                          style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'STATE',
-                          style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'RE-SCHED',
-                          style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                        ),
+                      Text(
+                        word.meaningJa,
+                        style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.textSecondary),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                const Divider(height: 1, thickness: 1),
-
-                // Table rows
-                ...recent.map((word) {
-                  final due = word.nextReviewAt == null || word.nextReviewAt!.isBefore(now);
-                  String nextText = 'DUE';
-                  Color nextColor = AppTheme.warning;
-
-                  if (!due && word.nextReviewAt != null) {
-                    final diff = word.nextReviewAt!.difference(now).inDays;
-                    if (diff <= 0) {
-                      nextText = 'TOMORROW';
-                      nextColor = AppTheme.textSecondary;
-                    } else {
-                      nextText = 'IN ${diff + 1}D';
-                      nextColor = AppTheme.textSecondary;
-                    }
-                  }
-
-                  Color statusColor = AppTheme.textSecondary;
-                  String statusText = 'NEW';
-                  if (word.status == 1) {
-                    statusColor = AppTheme.success;
-                    statusText = 'MASTER';
-                  } else if (word.status == 2) {
-                    statusColor = AppTheme.error;
-                    statusText = 'WEAK';
-                  }
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: AppTheme.borderColor, width: 0.5),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            '#${word.id.toString().padLeft(3, '0')} ${word.spelling.toUpperCase()}',
-                            style: GoogleFonts.shareTechMono(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            word.meaningJa,
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            statusText,
-                            style: GoogleFonts.shareTechMono(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            nextText,
-                            style: GoogleFonts.shareTechMono(fontSize: 10, fontWeight: FontWeight.bold, color: nextColor),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
+                // Status chip
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: AppTheme.statusChipDecoration(color: statusColor, filled: true),
+                  child: Text(
+                    statusLabel,
+                    style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.w500, color: statusColor),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.sp12),
+                // Next review
+                SizedBox(
+                  width: 60,
+                  child: Text(
+                    nextReview,
+                    style: GoogleFonts.outfit(fontSize: 11, color: AppTheme.textMuted),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
               ],
             ),
+          );
+        }).toList(),
+      ),
     );
   }
 }
 
-// ── Custom VFD Spectrum Painter ──
-// Draws an audio equalizer style spectrum analyzer using segment blocks.
-class VFDSpectrumPainter extends CustomPainter {
-  final List<int> data;
-  VFDSpectrumPainter(this.data);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
-
-    final double paddingX = 6.0;
-    final double spacingX = 4.0;
-    final int maxSegments = 10;
-    final double colWidth = (size.width - (paddingX * 2) - (spacingX * 6)) / 7;
-    final double segSpacingY = 2.0;
-    final double segHeight = (size.height - (segSpacingY * (maxSegments - 1))) / maxSegments;
-
-    final double maxVal = data.reduce(max).toDouble();
-    final double range = maxVal == 0 ? 1.0 : maxVal;
-
-    for (int col = 0; col < 7; col++) {
-      final double x = paddingX + col * (colWidth + spacingX);
-      
-      // Calculate how many segments should be lit
-      final double rawNormalized = data[col] / range;
-      final int litCount = (rawNormalized * maxSegments).round();
-
-      for (int row = 0; row < maxSegments; row++) {
-        // Draw bottom-up: index 0 is bottom, index 9 is top
-        final double y = size.height - (row + 1) * (segHeight + segSpacingY) + segSpacingY;
-        final bool isLit = row < litCount && data[col] > 0;
-
-        Color blockColor;
-        if (row < 5) {
-          blockColor = AppTheme.success; // Bottom 5: Green
-        } else if (row < 8) {
-          blockColor = AppTheme.warning; // Middle 3: Yellow
-        } else {
-          blockColor = AppTheme.error;   // Top 2: Red
-        }
-
-        final paint = Paint()
-          ..color = isLit ? blockColor : blockColor.withOpacity(0.06)
-          ..style = PaintingStyle.fill;
-
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(x, y, colWidth, segHeight),
-            const Radius.circular(0.5),
-          ),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
 // ═══════════════════════════════════════════════════════════
-// LEARNING CONFIG BOTTOM SHEET (Physical tuning chassis style)
+// LEARNING CONFIG BOTTOM SHEET (v7.0 clean design)
 // ═══════════════════════════════════════════════════════════
 class _LearningConfigBottomSheet extends StatefulWidget {
   final bool isTest;
@@ -973,7 +878,7 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   RangeType _rangeType = RangeType.due;
   OrderType _orderType = OrderType.random;
   int _questionCount = 10;
-  
+
   final TextEditingController _startIdController = TextEditingController(text: '1');
   final TextEditingController _endIdController = TextEditingController(text: '100');
 
@@ -1001,63 +906,72 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        border: Border(
-          top: BorderSide(color: AppTheme.borderColor, width: 1.0),
-        ),
+      decoration: BoxDecoration(
+        color: AppTheme.elevated,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
       ),
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        left: AppTheme.sp20,
+        right: AppTheme.sp20,
+        top: AppTheme.sp20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppTheme.sp24,
       ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'TUNING_PANEL // CONFIG',
-              style: GoogleFonts.shareTechMono(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primary,
-                letterSpacing: 1.0,
+            // Handle bar
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.textMuted,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppTheme.sp16),
+            Text(
+              '学習設定',
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: AppTheme.sp20),
 
             if (!widget.isSpelling) ...[
-              _buildSectionTitle('SIGNAL DIRECTION'),
-              const SizedBox(height: 8),
+              _buildSectionTitle('出題方向'),
+              const SizedBox(height: AppTheme.sp8),
               Row(
                 children: [
-                  Expanded(child: _buildChoiceItem('EN → JP', _direction == LanguageDirection.enToJa, () => setState(() => _direction = LanguageDirection.enToJa))),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildChoiceItem('JP → EN', _direction == LanguageDirection.jaToEn, () => setState(() => _direction = LanguageDirection.jaToEn))),
+                  Expanded(child: _buildChoiceItem('英語 → 日本語', _direction == LanguageDirection.enToJa, () => setState(() => _direction = LanguageDirection.enToJa))),
+                  const SizedBox(width: AppTheme.sp8),
+                  Expanded(child: _buildChoiceItem('日本語 → 英語', _direction == LanguageDirection.jaToEn, () => setState(() => _direction = LanguageDirection.jaToEn))),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppTheme.sp20),
             ],
 
-            _buildSectionTitle('CHASSIS SCOPE'),
-            const SizedBox(height: 8),
+            _buildSectionTitle('出題範囲'),
+            const SizedBox(height: AppTheme.sp8),
             Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
-                _buildFilterChip('DUE (復習対象)', RangeType.due),
-                _buildFilterChip('ALL (全体)', RangeType.all),
-                _buildFilterChip('STAR (星)', RangeType.favorites),
-                _buildFilterChip('NEW (未学習)', RangeType.unlearned),
-                _buildFilterChip('WEAK (苦手)', RangeType.weak),
-                _buildFilterChip('MASTERED (習得)', RangeType.mastered),
-                _buildFilterChip('CUSTOM (範囲)', RangeType.customRange),
+                _buildFilterChip('復習対象', RangeType.due),
+                _buildFilterChip('すべて', RangeType.all),
+                _buildFilterChip('お気に入り', RangeType.favorites),
+                _buildFilterChip('未学習', RangeType.unlearned),
+                _buildFilterChip('苦手', RangeType.weak),
+                _buildFilterChip('習得済み', RangeType.mastered),
+                _buildFilterChip('範囲指定', RangeType.customRange),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppTheme.sp12),
 
             if (_rangeType == RangeType.customRange) ...[
               Row(
@@ -1066,22 +980,28 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                     child: TextField(
                       controller: _startIdController,
                       keyboardType: TextInputType.number,
-                      style: GoogleFonts.shareTechMono(color: AppTheme.textPrimary, fontSize: 13),
-                      decoration: _inputDecoration('START ID'),
+                      style: GoogleFonts.outfit(color: AppTheme.textPrimary, fontSize: 14),
+                      decoration: InputDecoration(
+                        labelText: '開始ID',
+                        labelStyle: GoogleFonts.outfit(color: AppTheme.textSecondary, fontSize: 12),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppTheme.sp12),
                   Expanded(
                     child: TextField(
                       controller: _endIdController,
                       keyboardType: TextInputType.number,
-                      style: GoogleFonts.shareTechMono(color: AppTheme.textPrimary, fontSize: 13),
-                      decoration: _inputDecoration('END ID'),
+                      style: GoogleFonts.outfit(color: AppTheme.textPrimary, fontSize: 14),
+                      decoration: InputDecoration(
+                        labelText: '終了ID',
+                        labelStyle: GoogleFonts.outfit(color: AppTheme.textSecondary, fontSize: 12),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppTheme.sp8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -1094,68 +1014,68 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-            ] else ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppTheme.sp16),
             ],
 
-            _buildSectionTitle('OUTPUT SORT ORDER'),
-            const SizedBox(height: 8),
+            _buildSectionTitle('並び順'),
+            const SizedBox(height: AppTheme.sp8),
             Row(
               children: [
-                Expanded(child: _buildChoiceItem('RANDOM', _orderType == OrderType.random, () => setState(() => _orderType = OrderType.random))),
-                const SizedBox(width: 12),
-                Expanded(child: _buildChoiceItem('ID', _orderType == OrderType.idOrder, () => setState(() => _orderType = OrderType.idOrder))),
-                const SizedBox(width: 12),
+                Expanded(child: _buildChoiceItem('ランダム', _orderType == OrderType.random, () => setState(() => _orderType = OrderType.random))),
+                const SizedBox(width: AppTheme.sp8),
+                Expanded(child: _buildChoiceItem('ID順', _orderType == OrderType.idOrder, () => setState(() => _orderType = OrderType.idOrder))),
+                const SizedBox(width: AppTheme.sp8),
                 Expanded(child: _buildChoiceItem('A-Z', _orderType == OrderType.alphabetical, () => setState(() => _orderType = OrderType.alphabetical))),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppTheme.sp20),
 
             if (widget.isTest) ...[
-              _buildSectionTitle('QUESTIONS QUANTITY'),
-              const SizedBox(height: 8),
+              _buildSectionTitle('問題数'),
+              const SizedBox(height: AppTheme.sp8),
               Row(
                 children: [
                   Expanded(child: _buildChoiceItem('10', _questionCount == 10, () => setState(() => _questionCount = 10))),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppTheme.sp8),
                   Expanded(child: _buildChoiceItem('20', _questionCount == 20, () => setState(() => _questionCount = 20))),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppTheme.sp8),
                   Expanded(child: _buildChoiceItem('30', _questionCount == 30, () => setState(() => _questionCount = 30))),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildChoiceItem('ALL', _questionCount == 9999, () => setState(() => _questionCount = 9999))),
+                  const SizedBox(width: AppTheme.sp8),
+                  Expanded(child: _buildChoiceItem('全部', _questionCount == 9999, () => setState(() => _questionCount = 9999))),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: AppTheme.sp24),
             ],
 
-            TactileButton(
-              height: 48,
-              onPressed: () {
-                int startId = int.tryParse(_startIdController.text) ?? 1;
-                int endId = int.tryParse(_endIdController.text) ?? 100;
-                if (startId < 1) startId = 1;
-                if (endId < startId) endId = startId + 10;
+            SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () {
+                  int startId = int.tryParse(_startIdController.text) ?? 1;
+                  int endId = int.tryParse(_endIdController.text) ?? 100;
+                  if (startId < 1) startId = 1;
+                  if (endId < startId) endId = startId + 10;
 
-                Navigator.pop(context, LearningConfig(
-                  direction: _direction,
-                  rangeType: _rangeType,
-                  orderType: _orderType,
-                  startId: startId,
-                  endId: endId,
-                  questionCount: _questionCount,
-                ));
-              },
-              color: AppTheme.primary,
-              ledColor: Colors.white,
-              isLedOn: true,
-              child: Text(
-                'INITIALIZE SESSION',
-                style: GoogleFonts.shareTechMono(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.displayBg,
-                  letterSpacing: 0.5,
+                  Navigator.pop(context, LearningConfig(
+                    direction: _direction,
+                    rangeType: _rangeType,
+                    orderType: _orderType,
+                    startId: startId,
+                    endId: endId,
+                    questionCount: _questionCount,
+                  ));
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  ),
+                ),
+                child: Text(
+                  'セッション開始',
+                  style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -1168,28 +1088,34 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: GoogleFonts.shareTechMono(
-        fontSize: 10,
-        fontWeight: FontWeight.bold,
+      style: GoogleFonts.outfit(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
         color: AppTheme.textSecondary,
-        letterSpacing: 0.5,
       ),
     );
   }
 
   Widget _buildChoiceItem(String title, bool selected, VoidCallback onTap) {
-    return TactileButton(
-      height: 38,
-      onPressed: onTap,
-      color: selected ? AppTheme.hover : AppTheme.surface,
-      ledColor: AppTheme.primary,
-      isLedOn: selected,
-      child: Text(
-        title,
-        style: GoogleFonts.shareTechMono(
-          fontSize: 12,
-          fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-          color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary.withOpacity(0.1) : AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          border: Border.all(
+            color: selected ? AppTheme.primary.withOpacity(0.4) : AppTheme.borderColor,
+          ),
+        ),
+        child: Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? AppTheme.primary : AppTheme.textSecondary,
+          ),
         ),
       ),
     );
@@ -1197,21 +1123,23 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
 
   Widget _buildFilterChip(String label, RangeType type) {
     final selected = _rangeType == type;
-    return Container(
-      width: 140,
-      margin: const EdgeInsets.only(right: 6, bottom: 6),
-      child: TactileButton(
-        height: 34,
-        onPressed: () => setState(() => _rangeType = type),
-        color: selected ? AppTheme.hover : AppTheme.surface,
-        ledColor: AppTheme.primary,
-        isLedOn: selected,
+    return GestureDetector(
+      onTap: () => setState(() => _rangeType = type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary.withOpacity(0.1) : AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          border: Border.all(
+            color: selected ? AppTheme.primary.withOpacity(0.4) : AppTheme.borderColor,
+          ),
+        ),
         child: Text(
           label,
-          style: GoogleFonts.shareTechMono(
-            fontSize: 10,
-            color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
-            fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? AppTheme.primary : AppTheme.textSecondary,
           ),
         ),
       ),
@@ -1220,28 +1148,22 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
 
   Widget _buildQuickRangeButton(int start, int end) {
     return Container(
-      width: 70,
       margin: const EdgeInsets.only(right: 6),
-      child: TactileButton(
-        height: 28,
-        onPressed: () => _selectQuickRange(start, end),
-        child: Text(
-          '$start-$end',
-          style: GoogleFonts.shareTechMono(fontSize: 10, color: AppTheme.textSecondary),
+      child: GestureDetector(
+        onTap: () => _selectQuickRange(start, end),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            border: Border.all(color: AppTheme.borderColor),
+          ),
+          child: Text(
+            '$start-$end',
+            style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.textSecondary),
+          ),
         ),
       ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 10),
-      filled: true,
-      fillColor: AppTheme.displayBg,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: const BorderSide(color: AppTheme.borderColor)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: const BorderSide(color: AppTheme.borderColor)),
     );
   }
 }

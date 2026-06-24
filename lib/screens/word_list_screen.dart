@@ -44,7 +44,40 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
     await _flutterTts.speak(text);
   }
 
-  // Add / Edit Dialog (styled as hardware config panel)
+  // ─── Next Review Date Formatting ───
+  String _formatNextReview(DateTime? nextReviewAt) {
+    if (nextReviewAt == null) return '未学習';
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final reviewDay = DateTime(nextReviewAt.year, nextReviewAt.month, nextReviewAt.day);
+
+    if (reviewDay.isBefore(today)) return '復習対象';
+    if (reviewDay.isAtSameMomentAs(today)) return '今日';
+
+    final daysUntil = reviewDay.difference(today).inDays;
+    if (daysUntil <= 7) return '$daysUntil日後';
+
+    return '${nextReviewAt.month}/${nextReviewAt.day}';
+  }
+
+  Color _nextReviewColor(DateTime? nextReviewAt) {
+    if (nextReviewAt == null) return AppTheme.textMuted;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final reviewDay = DateTime(nextReviewAt.year, nextReviewAt.month, nextReviewAt.day);
+
+    if (reviewDay.isBefore(today)) return AppTheme.warning;
+    if (reviewDay.isAtSameMomentAs(today)) return AppTheme.error;
+
+    final daysUntil = reviewDay.difference(today).inDays;
+    if (daysUntil <= 7) return AppTheme.info;
+
+    return AppTheme.textSecondary;
+  }
+
+  // ─── Add / Edit Dialog ───
   void _showWordFormDialog({Word? word}) {
     final isEdit = word != null;
     final spellingController = TextEditingController(text: word?.spelling ?? '');
@@ -55,14 +88,18 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppTheme.surface,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.zero,
-            side: BorderSide(color: AppTheme.borderColor),
+          backgroundColor: AppTheme.elevated,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            side: const BorderSide(color: AppTheme.borderColor),
           ),
           title: Text(
-            isEdit ? 'EDIT_WORD // PARAMETER_TUNING' : 'NEW_WORD // DATABASE_REGISTER',
-            style: GoogleFonts.shareTechMono(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primary),
+            isEdit ? '単語を編集' : '新しい単語を追加',
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: AppTheme.textPrimary,
+            ),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -71,35 +108,34 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                 TextField(
                   controller: spellingController,
                   enabled: !isEdit,
-                  style: GoogleFonts.shareTechMono(fontSize: 13),
-                  decoration: _inputDecoration('SPELLING (ENGLISH)'),
+                  style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textPrimary),
+                  decoration: _inputDecoration('スペリング（英語）'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppTheme.sp12),
                 TextField(
                   controller: meaningController,
-                  style: GoogleFonts.shareTechMono(fontSize: 13),
-                  decoration: _inputDecoration('MEANING (JAPANESE)'),
+                  style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textPrimary),
+                  decoration: _inputDecoration('意味（日本語）'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppTheme.sp12),
                 TextField(
                   controller: nuanceController,
-                  style: GoogleFonts.shareTechMono(fontSize: 13),
-                  decoration: _inputDecoration('NUANCE (OPTIONAL)'),
+                  style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textPrimary),
+                  decoration: _inputDecoration('ニュアンス（任意）'),
                 ),
               ],
             ),
           ),
           actions: [
-            TactileButton(
-              width: 80,
-              height: 34,
+            TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('CANCEL', style: GoogleFonts.shareTechMono(fontSize: 11)),
+              child: Text(
+                'キャンセル',
+                style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textSecondary),
+              ),
             ),
-            const SizedBox(width: 8),
-            TactileButton(
-              width: 80,
-              height: 34,
+            const SizedBox(width: AppTheme.sp4),
+            ElevatedButton(
               onPressed: () {
                 final spelling = spellingController.text.trim();
                 final meaning = meaningController.text.trim();
@@ -109,9 +145,10 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'ERROR: REQUIRED FIELDS EMPTY.',
-                        style: GoogleFonts.shareTechMono(),
+                        'スペリングと意味は必須です',
+                        style: GoogleFonts.outfit(),
                       ),
+                      backgroundColor: AppTheme.error,
                     ),
                   );
                   return;
@@ -126,10 +163,20 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
 
                 Navigator.pop(context);
               },
-              color: AppTheme.primary,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.sp16,
+                  vertical: AppTheme.sp8,
+                ),
+              ),
               child: Text(
-                isEdit ? 'SAVE' : 'ADD',
-                style: GoogleFonts.shareTechMono(fontSize: 11, color: AppTheme.displayBg, fontWeight: FontWeight.bold),
+                isEdit ? '保存' : '追加',
+                style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -138,7 +185,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
     );
   }
 
-  // Scanner Import Modal (styled as OCR text console)
+  // ─── Text Import Sheet ───
   void _showImportTextSheet() {
     final textController = TextEditingController();
     showModalBottomSheet(
@@ -148,46 +195,73 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
       builder: (context) {
         return Container(
           height: MediaQuery.of(context).size.height * 0.7,
-          decoration: const BoxDecoration(
-            color: AppTheme.surface,
-            border: Border(top: BorderSide(color: AppTheme.borderColor)),
+          decoration: BoxDecoration(
+            color: AppTheme.elevated,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppTheme.radiusLg),
+            ),
+            border: const Border(
+              top: BorderSide(color: AppTheme.borderColor),
+            ),
           ),
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(AppTheme.sp24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'OCR_TEXT_SCANNER // TELEMETRY_IMPORT',
-                style: GoogleFonts.shareTechMono(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primary,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'PASTE TEXT TO PARSE AND INTEGRATE UNIQUE ENGLISH VOCABULARY TERMS.',
-                style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 10),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: TextField(
-                  controller: textController,
-                  maxLines: 12,
-                  style: GoogleFonts.spaceMono(fontSize: 12, color: AppTheme.success),
-                  decoration: InputDecoration(
-                    prefixText: 'SCANNER > ',
-                    prefixStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 13),
-                    hintText: 'PASTE SCAN DATA HERE...',
-                    hintStyle: GoogleFonts.shareTechMono(color: AppTheme.textMuted, fontSize: 13),
-                    fillColor: AppTheme.displayBg,
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: AppTheme.sp16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.textMuted,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              TactileButton(
-                height: 44,
+              Text(
+                'テキストから単語を取り込み',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppTheme.sp4),
+              Text(
+                '英語テキストを貼り付けると、単語を自動的に抽出します。',
+                style: GoogleFonts.outfit(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: AppTheme.sp16),
+              Expanded(
+                child: TextField(
+                  controller: textController,
+                  maxLines: null,
+                  expands: true,
+                  textAlignVertical: TextAlignVertical.top,
+                  style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'ここにテキストを貼り付け…',
+                    hintStyle: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 14),
+                    filled: true,
+                    fillColor: AppTheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                      borderSide: const BorderSide(color: AppTheme.borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                      borderSide: const BorderSide(color: AppTheme.borderColor),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppTheme.sp16),
+              ElevatedButton(
                 onPressed: () async {
                   final text = textController.text.trim();
                   if (text.isEmpty) return;
@@ -202,7 +276,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     if (w.length > 3) {
                       scanned.add({
                         'spelling': w,
-                        'meaning_ja': 'PENDING_TRANSLATION',
+                        'meaning_ja': '翻訳待ち',
                       });
                     }
                   }
@@ -214,8 +288,8 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'LOG: IMPORTED ${scanned.length} WORDS SUCCESSFULLY.',
-                          style: GoogleFonts.shareTechMono(),
+                          '${scanned.length}件の単語を取り込みました',
+                          style: GoogleFonts.outfit(),
                         ),
                         backgroundColor: AppTheme.success,
                       ),
@@ -224,19 +298,29 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'ERROR: NO VALID WORDS FOUND.',
-                          style: GoogleFonts.shareTechMono(),
+                          '有効な単語が見つかりませんでした',
+                          style: GoogleFonts.outfit(),
                         ),
                       ),
                     );
                   }
                 },
-                color: AppTheme.primary,
-                child: Text(
-                  'SCAN & IMPORT DATA',
-                  style: GoogleFonts.shareTechMono(fontWeight: FontWeight.bold, color: AppTheme.displayBg),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  ),
                 ),
-              )
+                child: Text(
+                  '取り込み開始',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
             ],
           ),
         );
@@ -244,43 +328,53 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
     );
   }
 
+  // ─── Delete Confirmation ───
   void _confirmDelete(Word word) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppTheme.surface,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.zero,
-            side: BorderSide(color: AppTheme.borderColor),
+          backgroundColor: AppTheme.elevated,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            side: const BorderSide(color: AppTheme.borderColor),
           ),
           title: Text(
-            'DELETE_WORD // DESTRUCTIVE_ACTION',
-            style: GoogleFonts.shareTechMono(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.error),
+            '単語を削除',
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.error,
+            ),
           ),
           content: Text(
-            'REMOVE "${word.spelling.toUpperCase()}" PERMANENTLY FROM CHASSIS MEMORY?',
-            style: GoogleFonts.shareTechMono(fontSize: 11, color: AppTheme.textSecondary),
+            '「${word.spelling}」を完全に削除しますか？この操作は取り消せません。',
+            style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textSecondary),
           ),
           actions: [
-            TactileButton(
-              width: 80,
-              height: 34,
+            TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('CANCEL', style: GoogleFonts.shareTechMono(fontSize: 11)),
+              child: Text(
+                'キャンセル',
+                style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textSecondary),
+              ),
             ),
-            const SizedBox(width: 8),
-            TactileButton(
-              width: 80,
-              height: 34,
+            const SizedBox(width: AppTheme.sp4),
+            ElevatedButton(
               onPressed: () {
                 ref.read(wordListProvider.notifier).deleteWord(word.id);
                 Navigator.pop(context);
               },
-              color: AppTheme.error,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.error,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                ),
+              ),
               child: Text(
-                'DELETE',
-                style: GoogleFonts.shareTechMono(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                '削除',
+                style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -292,6 +386,11 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
   @override
   Widget build(BuildContext context) {
     final allWords = ref.watch(wordListProvider);
+
+    // Compute stats
+    final totalCount = allWords.length;
+    final masteredCount = allWords.where((w) => w.status == 1).length;
+    final masteredRatio = totalCount > 0 ? masteredCount / totalCount : 0.0;
 
     // Apply Filter & Search
     final filteredWords = allWords.where((word) {
@@ -318,180 +417,245 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: const Text('WORD LIBRARY DIRECTORY'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.document_scanner_rounded, size: 16),
-            tooltip: 'Import Scan',
-            onPressed: _showImportTextSheet,
-          ),
-          IconButton(
-            icon: const Icon(Icons.add, size: 18),
-            tooltip: 'Add Term',
-            onPressed: () => _showWordFormDialog(),
-          ),
-        ],
-      ),
       body: SafeArea(
         child: Column(
           children: [
-            // Search Bar & Filter Headers
+            // ─── Header ───
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(
+                AppTheme.sp20, AppTheme.sp16, AppTheme.sp20, AppTheme.sp4,
+              ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
-                    controller: _searchController,
-                    style: GoogleFonts.shareTechMono(fontSize: 13),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      prefixText: 'SEARCH > ',
-                      prefixStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 13),
-                      hintText: 'SEARCH SPELLING OR TRANSLATION...',
-                      hintStyle: GoogleFonts.shareTechMono(color: AppTheme.textMuted, fontSize: 13),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 14),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                });
-                              },
-                            )
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  // Filter horizontal row with TactileButtons
-                  SizedBox(
-                    height: 28,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        Container(
-                          width: 110,
-                          margin: const EdgeInsets.only(right: 6),
-                          child: TactileButton(
-                            height: 28,
-                            onPressed: () => setState(() => _onlyFavorites = !_onlyFavorites),
-                            color: _onlyFavorites ? AppTheme.hover : AppTheme.surface,
-                            ledColor: AppTheme.warning,
-                            isLedOn: _onlyFavorites,
-                            child: Text('FAVORITES', style: GoogleFonts.shareTechMono(fontSize: 10)),
-                          ),
-                        ),
-                        Container(
-                          width: 100,
-                          margin: const EdgeInsets.only(right: 6),
-                          child: TactileButton(
-                            height: 28,
-                            onPressed: () => setState(() => _onlyUserWords = !_onlyUserWords),
-                            color: _onlyUserWords ? AppTheme.hover : AppTheme.surface,
-                            ledColor: AppTheme.info,
-                            isLedOn: _onlyUserWords,
-                            child: Text('CUSTOM_ONLY', style: GoogleFonts.shareTechMono(fontSize: 10)),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ...[
-                          {'label': 'ALL', 'val': -1, 'led': AppTheme.primary},
-                          {'label': 'NEW', 'val': 0, 'led': AppTheme.textSecondary},
-                          {'label': 'MASTERED', 'val': 1, 'led': AppTheme.success},
-                          {'label': 'WEAK', 'val': 2, 'led': AppTheme.error},
-                        ].map((filter) {
-                          final isSelected = _selectedStatusFilter == filter['val'];
-                          return Container(
-                            width: 90,
-                            margin: const EdgeInsets.only(right: 6),
-                            child: TactileButton(
-                              height: 28,
-                              onPressed: () {
-                                setState(() {
-                                  _selectedStatusFilter = filter['val'] as int;
-                                });
-                              },
-                              color: isSelected ? AppTheme.hover : AppTheme.surface,
-                              ledColor: filter['led'] as Color,
-                              isLedOn: isSelected,
-                              child: Text(
-                                filter['label'] as String,
-                                style: GoogleFonts.shareTechMono(fontSize: 10),
+                  // Title row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '単語ライブラリ',
+                              style: GoogleFonts.outfit(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
                               ),
                             ),
-                          );
-                        }),
-                      ],
+                            const SizedBox(height: AppTheme.sp4),
+                            Text(
+                              '$totalCount語　習得 $masteredCount語',
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.file_upload_outlined, size: 20, color: AppTheme.textSecondary),
+                        tooltip: 'テキストから取り込み',
+                        onPressed: _showImportTextSheet,
+                      ),
+                      const SizedBox(width: AppTheme.sp4),
+                      IconButton(
+                        icon: const Icon(Icons.add_rounded, size: 22, color: AppTheme.primary),
+                        tooltip: '単語を追加',
+                        onPressed: () => _showWordFormDialog(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppTheme.primary.withOpacity(0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppTheme.sp12),
+
+                  // Progress bar
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                    child: LinearProgressIndicator(
+                      value: masteredRatio,
+                      minHeight: 4,
+                      backgroundColor: AppTheme.elevated,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
                     ),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1, thickness: 1),
 
-            // High-density Data Table header (measuring log style)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              color: AppTheme.displayBg,
+            const SizedBox(height: AppTheme.sp8),
+
+            // ─── Search Bar ───
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp20),
+              child: TextField(
+                controller: _searchController,
+                style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textPrimary),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppTheme.textMuted),
+                  hintText: '単語や意味を検索…',
+                  hintStyle: GoogleFonts.outfit(color: AppTheme.textMuted, fontSize: 14),
+                  filled: true,
+                  fillColor: AppTheme.surface,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.sp16,
+                    vertical: AppTheme.sp12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    borderSide: const BorderSide(color: AppTheme.borderColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    borderSide: const BorderSide(color: AppTheme.borderColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+                  ),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 16, color: AppTheme.textSecondary),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                        )
+                      : null,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AppTheme.sp12),
+
+            // ─── Filter Chips ───
+            SizedBox(
+              height: 34,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp20),
+                children: [
+                  _buildFilterChip(
+                    label: 'お気に入り',
+                    icon: Icons.star_rounded,
+                    isSelected: _onlyFavorites,
+                    activeColor: AppTheme.warning,
+                    onTap: () => setState(() => _onlyFavorites = !_onlyFavorites),
+                  ),
+                  const SizedBox(width: AppTheme.sp8),
+                  _buildFilterChip(
+                    label: 'カスタム',
+                    icon: Icons.person_rounded,
+                    isSelected: _onlyUserWords,
+                    activeColor: AppTheme.info,
+                    onTap: () => setState(() => _onlyUserWords = !_onlyUserWords),
+                  ),
+                  const SizedBox(width: AppTheme.sp12),
+                  // Divider
+                  Container(
+                    width: 1,
+                    height: 20,
+                    margin: const EdgeInsets.symmetric(vertical: 7),
+                    color: AppTheme.borderColor,
+                  ),
+                  const SizedBox(width: AppTheme.sp12),
+                  ...[
+                    {'label': 'すべて', 'val': -1, 'color': AppTheme.primary},
+                    {'label': '未学習', 'val': 0, 'color': AppTheme.textSecondary},
+                    {'label': '習得', 'val': 1, 'color': AppTheme.success},
+                    {'label': '苦手', 'val': 2, 'color': AppTheme.error},
+                  ].map((filter) {
+                    final isSelected = _selectedStatusFilter == filter['val'];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: AppTheme.sp8),
+                      child: _buildFilterChip(
+                        label: filter['label'] as String,
+                        isSelected: isSelected,
+                        activeColor: filter['color'] as Color,
+                        onTap: () {
+                          setState(() {
+                            _selectedStatusFilter = filter['val'] as int;
+                          });
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppTheme.sp12),
+
+            // ─── Results count ───
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp20),
               child: Row(
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      'INDEX/SPELLING',
-                      style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      'TRANSLATION_LOG',
-                      style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'SRS_STATE',
-                      style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'OPERATE',
-                      style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                  Text(
+                    '${filteredWords.length}件の結果',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: AppTheme.textMuted,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1, thickness: 1),
 
-            // Directory rows
+            const SizedBox(height: AppTheme.sp8),
+
+            // ─── Word List ───
             Expanded(
               child: filteredWords.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.folder_open_rounded, color: AppTheme.textMuted, size: 36),
-                          const SizedBox(height: 12),
+                          Icon(
+                            Icons.search_off_rounded,
+                            color: AppTheme.textMuted,
+                            size: 48,
+                          ),
+                          const SizedBox(height: AppTheme.sp12),
                           Text(
-                            'LOG: NO RECORDS MATCH QUERY.',
-                            style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 11),
+                            '該当する単語がありません',
+                            style: GoogleFonts.outfit(
+                              color: AppTheme.textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: AppTheme.sp4),
+                          Text(
+                            '検索条件やフィルターを変更してみてください',
+                            style: GoogleFonts.outfit(
+                              color: AppTheme.textMuted,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
                     )
-                  : ListView.builder(
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp20),
                       itemCount: filteredWords.length,
+                      separatorBuilder: (_, __) => const Divider(
+                        height: 1,
+                        color: AppTheme.borderColor,
+                      ),
                       itemBuilder: (context, index) {
                         final word = filteredWords[index];
                         return _buildWordRow(word);
@@ -504,165 +668,238 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
     );
   }
 
-  Widget _buildWordRow(Word word) {
-    Color statusColor = AppTheme.textSecondary;
-    String statusText = 'NEW';
-    if (word.status == 1) {
-      statusColor = AppTheme.success;
-      statusText = 'MASTER';
-    } else if (word.status == 2) {
-      statusColor = AppTheme.error;
-      statusText = 'WEAK';
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppTheme.borderColor, width: 0.5),
+  // ─── Filter Chip Builder ───
+  Widget _buildFilterChip({
+    required String label,
+    IconData? icon,
+    required bool isSelected,
+    required Color activeColor,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.sp12,
+          vertical: AppTheme.sp4,
         ),
-      ),
-      child: Row(
-        children: [
-          // Spelling + play audio button
-          Expanded(
-            flex: 3,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    '#${word.id.toString().padLeft(3, '0')} ${word.spelling.toUpperCase()}',
-                    style: GoogleFonts.shareTechMono(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.volume_up_rounded, size: 12, color: AppTheme.textSecondary),
-                  onPressed: () => _speak(word.spelling),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                if (word.isSystem) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0.5),
-                    decoration: BoxDecoration(
-                      color: AppTheme.borderColor,
-                      borderRadius: BorderRadius.circular(1),
-                    ),
-                    child: Text(
-                      'SYS',
-                      style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 8, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ]
-              ],
-            ),
-          ),
-
-          // Translation
-          Expanded(
-            flex: 3,
-            child: Text(
-              word.meaningJa,
-              style: GoogleFonts.shareTechMono(fontSize: 12, color: AppTheme.textSecondary),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-
-          // Status state (interactable text button)
-          Expanded(
-            flex: 2,
-            child: InkWell(
-              onTap: () {
-                final nextStatus = (word.status + 1) % 3;
-                ref.read(wordListProvider.notifier).updateWordStatus(word.id, nextStatus);
-              },
-              child: Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 4,
-                    margin: const EdgeInsets.only(right: 6.0),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: statusColor,
-                      boxShadow: [
-                        BoxShadow(color: statusColor, blurRadius: 2),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    statusText,
-                    style: GoogleFonts.shareTechMono(
-                      color: statusColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+        decoration: isSelected
+            ? AppTheme.statusChipDecoration(color: activeColor, filled: true)
+            : AppTheme.cardDecoration(color: AppTheme.surface, radius: AppTheme.radiusSm),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected ? activeColor : AppTheme.textMuted,
+              ),
+              const SizedBox(width: AppTheme.sp4),
+            ],
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isSelected ? activeColor : AppTheme.textSecondary,
               ),
             ),
-          ),
-
-          // Favorite / Edit / Delete actions
-          Expanded(
-            flex: 2,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  onTap: () => ref.read(wordListProvider.notifier).toggleFavorite(word.id),
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: word.isFavorite ? AppTheme.warning : AppTheme.warning.withOpacity(0.1),
-                      border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
-                      boxShadow: word.isFavorite
-                          ? [
-                              BoxShadow(color: AppTheme.warning.withOpacity(0.6), blurRadius: 3),
-                            ]
-                          : null,
-                    ),
-                  ),
-                ),
-                if (!word.isSystem) ...[
-                  const SizedBox(width: 12),
-                  GestureDetector(
-                    onTap: () => _showWordFormDialog(word: word),
-                    child: const Icon(Icons.edit_rounded, color: AppTheme.textSecondary, size: 12),
-                  ),
-                  const SizedBox(width: 12),
-                  GestureDetector(
-                    onTap: () => _confirmDelete(word),
-                    child: const Icon(Icons.delete_rounded, color: AppTheme.error, size: 12),
-                  ),
-                ]
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
+  // ─── Word Row ───
+  Widget _buildWordRow(Word word) {
+    final statusColor = AppTheme.statusColor(word.status);
+    final statusLabel = AppTheme.statusLabel(word.status);
+    final nextReviewText = _formatNextReview(word.nextReviewAt);
+    final nextReviewColor = _nextReviewColor(word.nextReviewAt);
+
+    return InkWell(
+      onTap: () => _showWordFormDialog(word: word),
+      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppTheme.sp12),
+        child: Row(
+          children: [
+            // ── Left: Word info ──
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Spelling row
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          word.spelling,
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: AppTheme.sp8),
+                      GestureDetector(
+                        onTap: () => _speak(word.spelling),
+                        child: const Icon(
+                          Icons.volume_up_rounded,
+                          size: 16,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                      if (word.isFavorite) ...[
+                        const SizedBox(width: AppTheme.sp8),
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 14,
+                          color: AppTheme.warning,
+                        ),
+                      ],
+                      if (!word.isSystem) ...[
+                        const SizedBox(width: AppTheme.sp8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppTheme.sp4,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.info.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            'カスタム',
+                            style: GoogleFonts.outfit(
+                              color: AppTheme.info,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: AppTheme.sp4),
+                  // Meaning
+                  Text(
+                    word.meaningJa,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: AppTheme.sp12),
+
+            // ── Right: Status, Next Review, Actions ──
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Status chip
+                GestureDetector(
+                  onTap: () {
+                    final nextStatus = (word.status + 1) % 3;
+                    ref.read(wordListProvider.notifier).updateWordStatus(word.id, nextStatus);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.sp8,
+                      vertical: AppTheme.sp4,
+                    ),
+                    decoration: AppTheme.statusChipDecoration(
+                      color: statusColor,
+                      filled: true,
+                    ),
+                    child: Text(
+                      statusLabel,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppTheme.sp4),
+                // Next review date
+                Text(
+                  nextReviewText,
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    color: nextReviewColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(width: AppTheme.sp12),
+
+            // ── Actions column ──
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Favorite toggle
+                GestureDetector(
+                  onTap: () => ref.read(wordListProvider.notifier).toggleFavorite(word.id),
+                  child: Icon(
+                    word.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                    size: 18,
+                    color: word.isFavorite ? AppTheme.warning : AppTheme.textMuted,
+                  ),
+                ),
+                if (!word.isSystem) ...[
+                  const SizedBox(height: AppTheme.sp8),
+                  GestureDetector(
+                    onTap: () => _confirmDelete(word),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppTheme.textMuted,
+                      size: 16,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Input Decoration Helper ───
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 10),
+      labelStyle: GoogleFonts.outfit(color: AppTheme.textSecondary, fontSize: 13),
       filled: true,
-      fillColor: AppTheme.displayBg,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: const BorderSide(color: AppTheme.borderColor)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: const BorderSide(color: AppTheme.borderColor)),
+      fillColor: AppTheme.surface,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.sp16,
+        vertical: AppTheme.sp12,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        borderSide: const BorderSide(color: AppTheme.borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        borderSide: const BorderSide(color: AppTheme.borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+      ),
     );
   }
 }

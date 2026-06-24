@@ -106,8 +106,58 @@ class WordListNotifier extends StateNotifier<List<Word>> {
   Future<void> updateWordStatus(int wordId, int status) async {
     state = [
       for (final word in state)
-        if (word.id == wordId)
-          word.copyWith(status: status, reviewedAt: DateTime.now())
+        if (word.id == wordId) (() {
+          final now = DateTime.now();
+          if (status == 1) {
+            // Mastered (Quality 4)
+            final reps = word.repetitions + 1;
+            int interval;
+            if (reps == 1) {
+              interval = 1;
+            } else if (reps == 2) {
+              interval = 4;
+            } else {
+              interval = (word.intervalDays * word.easeFactor).round();
+            }
+            if (interval <= 0) interval = 1;
+
+            double newEase = word.easeFactor + (0.1 - (5 - 4) * (0.08 + (5 - 4) * 0.02));
+            if (newEase < 1.3) newEase = 1.3;
+
+            return word.copyWith(
+              status: 1,
+              reviewedAt: now,
+              nextReviewAt: now.add(Duration(days: interval)),
+              intervalDays: interval,
+              repetitions: reps,
+              easeFactor: newEase,
+            );
+          } else if (status == 2) {
+            // Weak (Quality 1)
+            final reps = 0;
+            const interval = 1;
+            final newEase = (word.easeFactor - 0.2).clamp(1.3, 3.0);
+
+            return word.copyWith(
+              status: 2,
+              reviewedAt: now,
+              nextReviewAt: now.add(const Duration(days: interval)),
+              intervalDays: interval,
+              repetitions: reps,
+              easeFactor: newEase,
+            );
+          } else {
+            // Unlearned / Reset
+            return word.copyWith(
+              status: 0,
+              reviewedAt: null,
+              nextReviewAt: null,
+              intervalDays: 0,
+              repetitions: 0,
+              easeFactor: 2.5,
+            );
+          }
+        })()
         else
           word
     ];

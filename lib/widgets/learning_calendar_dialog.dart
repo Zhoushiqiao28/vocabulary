@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
+import '../theme/app_theme.dart';
 
 class LearningCalendarDialog extends ConsumerStatefulWidget {
   const LearningCalendarDialog({super.key});
@@ -24,13 +25,9 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
       insetPadding: const EdgeInsets.all(16),
       child: Container(
         width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 400),
-        decoration: BoxDecoration(
-          color: const Color(0xFF141414), // Dark brutalist bg
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
-          // No border radius
-        ),
-        padding: const EdgeInsets.all(24),
+        constraints: const BoxConstraints(maxWidth: 360),
+        decoration: AppTheme.elevatedDecoration(),
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -40,28 +37,28 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'ACTIVITY',
-                  style: GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
+                  'LEARNING LOG',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white54),
+                  icon: const Icon(Icons.close_rounded, size: 18),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
 
             // Month Selector
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.chevron_left, color: Colors.white),
+                  icon: const Icon(Icons.chevron_left_rounded, size: 20),
                   onPressed: () {
                     setState(() {
                       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
@@ -70,15 +67,14 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                 ),
                 Text(
                   '${_currentMonth.year} / ${_currentMonth.month.toString().padLeft(2, '0')}',
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 1.0,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.chevron_right, color: Colors.white),
+                  icon: const Icon(Icons.chevron_right_rounded, size: 20),
                   onPressed: () {
                     setState(() {
                       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
@@ -92,12 +88,16 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
             // Calendar Grid
             _buildCalendarGrid(words, profile.dailyTarget),
             
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
 
-            // Summary Bottom (Sharp edges)
+            // Summary Bottom
             Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.white.withOpacity(0.02),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                border: Border.all(color: AppTheme.borderColor),
+              ),
               child: Row(
                 children: [
                   Expanded(
@@ -105,21 +105,21 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'CURRENT STREAK',
-                          style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white54,
-                            letterSpacing: 1.0,
+                          'CONTINUITY STREAK',
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textSecondary,
+                            letterSpacing: 0.5,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${profile.streakDays} DAYS',
-                          style: GoogleFonts.outfit(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFFE10600),
+                          '${profile.streakDays} DAYS ACTIVE',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.warning,
                           ),
                         ),
                       ],
@@ -135,17 +135,12 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
   }
 
   Widget _buildCalendarGrid(List<Word> words, int dailyTarget) {
-    // Weekday headers
     final weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     
-    // Calculate days in month
     final firstDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month, 1);
     final lastDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
-    
-    // 1=Monday, 7=Sunday
     final firstWeekday = firstDayOfMonth.weekday;
     
-    // Group reviewed words by day
     final Map<int, int> reviewCounts = {};
     for (final w in words) {
       if (w.reviewedAt != null &&
@@ -167,14 +162,14 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: weekdays.map((day) => 
           SizedBox(
-            width: 32,
+            width: 28,
             child: Center(
               child: Text(
                 day,
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white38,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textMuted,
                 ),
               ),
             ),
@@ -183,7 +178,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
       ),
     );
     
-    rows.add(const SizedBox(height: 12));
+    rows.add(const SizedBox(height: 8));
 
     // Calendar cells
     int currentDay = 1;
@@ -191,14 +186,14 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
       List<Widget> weekCells = [];
       for (int j = 1; j <= 7; j++) {
         if (i == 0 && j < firstWeekday) {
-          weekCells.add(const SizedBox(width: 32, height: 32));
+          weekCells.add(const SizedBox(width: 28, height: 28));
         } else if (currentDay > lastDayOfMonth.day) {
-          weekCells.add(const SizedBox(width: 32, height: 32));
+          weekCells.add(const SizedBox(width: 28, height: 28));
         } else {
           final count = reviewCounts[currentDay] ?? 0;
           final isToday = isCurrentMonth && currentDay == today.day;
           
-          weekCells.add(_buildDayCell(currentDay, count, dailyTarget, isToday, j >= 6));
+          weekCells.add(_buildDayCell(currentDay, count, dailyTarget, isToday));
           currentDay++;
         }
       }
@@ -209,7 +204,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
           children: weekCells,
         ),
       );
-      rows.add(const SizedBox(height: 8));
+      rows.add(const SizedBox(height: 4));
       
       if (currentDay > lastDayOfMonth.day) break;
     }
@@ -217,39 +212,45 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(int day, int count, int dailyTarget, bool isToday, bool isWeekend) {
+  Widget _buildDayCell(int day, int count, int dailyTarget, bool isToday) {
     Color bgColor = Colors.transparent;
-    Color textColor = isWeekend ? const Color(0xFFF87171).withOpacity(0.7) : Colors.white70;
+    Color textColor = AppTheme.textSecondary;
+    Border? border;
     
     if (count > 0) {
       if (count >= dailyTarget) {
-        bgColor = const Color(0xFFE10600); // Target achieved: Primary red
+        bgColor = AppTheme.success;
         textColor = Colors.white;
       } else if (count >= dailyTarget / 2) {
-        bgColor = Colors.white.withOpacity(0.2);
-        textColor = Colors.white;
+        bgColor = AppTheme.success.withOpacity(0.4);
+        textColor = AppTheme.textPrimary;
       } else {
-        bgColor = Colors.white.withOpacity(0.05);
-        textColor = Colors.white;
+        bgColor = AppTheme.success.withOpacity(0.12);
+        textColor = AppTheme.success;
+      }
+    }
+
+    if (isToday) {
+      border = Border.all(color: AppTheme.primary, width: 1.2);
+      if (count == 0) {
+        textColor = AppTheme.primary;
       }
     }
 
     return Container(
-      width: 32,
-      height: 32,
+      width: 28,
+      height: 28,
       decoration: BoxDecoration(
         color: bgColor,
-        // No border radius, sharp boxes
-        border: isToday
-            ? Border.all(color: Colors.white, width: 1)
-            : null,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: border,
       ),
       child: Center(
         child: Text(
           day.toString(),
-          style: GoogleFonts.outfit(
-            fontSize: 12,
-            fontWeight: isToday || count > 0 ? FontWeight.w700 : FontWeight.w400,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: isToday || count > 0 ? FontWeight.bold : FontWeight.normal,
             color: textColor,
           ),
         ),

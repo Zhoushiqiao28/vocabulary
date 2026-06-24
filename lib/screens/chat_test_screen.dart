@@ -14,168 +14,109 @@ class ChatTestScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
-  final TextEditingController _msgController = TextEditingController();
+  final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isSending = false;
-  
-  final Set<int> _expandedCorrectionIndices = {};
+  final List<int> _expandedCorrectionIndices = [];
+
   List<Word> _targetWords = [];
 
   @override
   void initState() {
     super.initState();
-    _selectTargetWords();
+    _initTargets();
   }
 
-  void _selectTargetWords() {
-    final allWords = ref.read(wordListProvider);
-    if (allWords.isEmpty) return;
-
-    final weakWords = allWords.where((w) => w.status == 2).toList()..shuffle();
+  void _initTargets() {
+    final words = ref.read(wordListProvider);
+    // Find up to 5 words to practice (prioritize weak or unlearned)
+    final weak = words.where((e) => e.status == 2).toList();
+    final newWords = words.where((e) => e.status == 0).toList();
     
-    final today = DateTime.now();
-    final todayWords = allWords.where((w) {
-      if (w.reviewedAt == null) return false;
-      return w.reviewedAt!.year == today.year &&
-             w.reviewedAt!.month == today.month &&
-             w.reviewedAt!.day == today.day;
-    }).toList()..shuffle();
-    
-    final unlearnedWords = allWords.where((w) => w.status == 0).toList()..shuffle();
-    final learnedWords = allWords.where((w) => w.status == 1).toList()..shuffle();
+    final targets = [...weak, ...newWords].take(5).toList();
+    setState(() {
+      _targetWords = targets;
+    });
 
-    final selected = <Word>{};
-
-    selected.addAll(weakWords.take(3));
-    selected.addAll(todayWords.take(3));
-    selected.addAll(unlearnedWords.take(2));
-    selected.addAll(learnedWords.take(2));
-
-    if (selected.length < 5) {
-      final remaining = List<Word>.from(allWords)..shuffle();
-      for (final w in remaining) {
-        if (selected.length >= 5) break;
-        selected.add(w);
-      }
-    }
-
-    _targetWords = selected.toList();
-    
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(aiVocaChatProvider.notifier).setTargetWords(_targetWords);
-      }
+      ref.read(aiVocaChatProvider.notifier).setTargetWords(targets);
+      _scrollToBottom();
     });
   }
 
   @override
   void dispose() {
-    _msgController.dispose();
+    _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
   void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
-  Future<void> _sendMessage() async {
-    final text = _msgController.text.trim();
+  void _send() async {
+    final text = _inputController.text.trim();
     if (text.isEmpty) return;
+    _inputController.clear();
 
-    _msgController.clear();
-    setState(() {
-      _isSending = true;
-    });
+    await ref.read(aiVocaChatProvider.notifier).sendMessage(text);
     _scrollToBottom();
-
-    try {
-      final chatNotifier = ref.read(aiVocaChatProvider.notifier);
-      await chatNotifier.sendMessage(text);
-      ref.read(userProfileProvider.notifier).recordLearningActivity();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'ERROR SENDING MESSAGE',
-              style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-            ),
-            backgroundColor: AppTheme.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSending = false;
-        });
-        _scrollToBottom();
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final chatHistory = ref.watch(aiVocaChatProvider);
+    final isAILoading = chatHistory.isNotEmpty && chatHistory.last.role == 'user';
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: AppTheme.background,
-        elevation: 0,
-        shape: Border(bottom: BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity))),
-        title: Text(
-          'AI CHAT',
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2,
-          ),
-        ),
+        title: const Text('RADIO AI DIALOGUE'),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep_rounded),
-            tooltip: 'CLEAR HISTORY',
+            tooltip: 'Clear history',
             onPressed: () {
               ref.read(aiVocaChatProvider.notifier).clearHistory();
             },
-          )
+          ),
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-            _buildTargetWordHeader(),
+            // Target Words header bar
+            if (_targetWords.isNotEmpty) _buildTargetWordsBar(),
+            const Divider(height: 1, thickness: 1),
 
+            // Chat Messages area
             Expanded(
-              child: chatHistory.isEmpty && !_isSending
+              child: chatHistory.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
                       controller: _scrollController,
                       padding: EdgeInsets.zero,
-                      itemCount: chatHistory.length + (_isSending ? 1 : 0),
+                      itemCount: chatHistory.length + (isAILoading ? 1 : 0),
                       itemBuilder: (context, index) {
-                        if (index == chatHistory.length && _isSending) {
-                          return _buildAILoadingBubble();
+                        if (index == chatHistory.length && isAILoading) {
+                          return _buildAILoadingIndicator();
                         }
-                        
                         final msg = chatHistory[index];
-                        final isUser = msg.role == 'user';
-                        
-                        return _buildMessageBubble(msg, index, isUser);
+                        return _buildMessageRow(msg, index, msg.role == 'user');
                       },
                     ),
             ),
+            const Divider(height: 1, thickness: 1),
 
+            // Input Bar at bottom
             _buildInputBar(),
           ],
         ),
@@ -183,39 +124,26 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
     );
   }
 
-  Widget _buildTargetWordHeader() {
-    if (_targetWords.isEmpty) return const SizedBox.shrink();
-
+  Widget _buildTargetWordsBar() {
     final today = DateTime.now();
-
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity))),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      color: AppTheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.my_location_rounded, color: AppTheme.primary, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'TARGET VOCABULARY',
-                style: GoogleFonts.outfit(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-            ],
+          Text(
+            'TARGET PRACTICE VOCABULARY',
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textSecondary,
+              letterSpacing: 0.5,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           SizedBox(
-            height: 36,
+            height: 28,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _targetWords.length,
@@ -228,64 +156,57 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
 
                 if (word.status == 2) {
                   chipColor = AppTheme.error;
-                  label = 'WEAK';
+                  label = 'Weak';
                 } else if (word.reviewedAt != null && 
                            word.reviewedAt!.year == today.year &&
                            word.reviewedAt!.month == today.month &&
                            word.reviewedAt!.day == today.day) {
                   chipColor = AppTheme.success;
-                  label = 'TODAY';
+                  label = 'Today';
                 } else if (word.status == 0) {
                   chipColor = AppTheme.info;
-                  label = 'NEW';
+                  label = 'New';
                 } else {
                   chipColor = AppTheme.warning;
-                  label = 'REVIEW';
+                  label = 'Review';
                 }
 
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    border: Border.all(color: chipColor.withOpacity(AppTheme.opStrong)),
-                    color: chipColor.withOpacity(AppTheme.opSubtle),
-                    borderRadius: BorderRadius.zero,
+                    border: Border.all(color: chipColor.withOpacity(0.3)),
+                    color: chipColor.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        word.spelling.toUpperCase(),
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
+                        word.spelling,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: chipColor,
-                          letterSpacing: 1,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         word.meaningJa,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
+                        style: const TextStyle(
+                          fontSize: 11,
                           color: AppTheme.textSecondary,
                         ),
                       ),
-                      if (label.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      const SizedBox(width: 6),
+                      Text(
+                        label,
+                        style: TextStyle(
                           color: chipColor,
-                          child: Text(
-                            label,
-                            style: GoogleFonts.outfit(
-                              color: AppTheme.background,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ]
+                      ),
                     ],
                   ),
                 );
@@ -304,21 +225,21 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.chat_bubble_outline_rounded, color: AppTheme.primary, size: 64),
-            const SizedBox(height: 24),
+            const Icon(Icons.chat_bubble_outline_rounded, color: AppTheme.textMuted, size: 48),
+            const SizedBox(height: 16),
             Text(
-              'NO MESSAGES YET',
-              style: GoogleFonts.outfit(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
+              'No messages yet',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
                 color: AppTheme.textPrimary,
-                letterSpacing: 2,
+                letterSpacing: -0.2,
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              'START TYPING TO INITIATE CONVERSATION',
-              style: GoogleFonts.outfit(color: AppTheme.textSecondary, fontSize: 12, letterSpacing: 1),
+            const SizedBox(height: 4),
+            const Text(
+              'Start typing below to initiate your practice dialogue.',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               textAlign: TextAlign.center,
             ),
           ],
@@ -327,15 +248,15 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage msg, int index, bool isUser) {
+  Widget _buildMessageRow(ChatMessage msg, int index, bool isUser) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      decoration: BoxDecoration(
-        color: isUser ? AppTheme.background : AppTheme.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity),
+            color: AppTheme.borderColor,
+            width: 0.5,
           ),
         ),
       ),
@@ -349,35 +270,32 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
               if (!isUser) ...[
                 Text(
                   'AI',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     color: AppTheme.primary,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                    letterSpacing: 1,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
               ],
               Flexible(
                 child: Text(
                   msg.text,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     color: isUser ? AppTheme.textSecondary : AppTheme.textPrimary,
-                    fontSize: 16,
+                    fontSize: 13,
                     height: 1.5,
                   ),
-                  textAlign: isUser ? TextAlign.right : TextAlign.left,
                 ),
               ),
               if (isUser) ...[
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Text(
                   'YOU',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     color: AppTheme.textMuted,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                    letterSpacing: 1,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -385,22 +303,22 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
           ),
           
           if (!isUser && msg.needsCorrection && msg.correctedText != null) ...[
-            const SizedBox(height: 24),
-            _buildCorrectionAccordion(msg, index),
+            const SizedBox(height: 14),
+            _buildCorrectionBox(msg, index),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildCorrectionAccordion(ChatMessage msg, int index) {
+  Widget _buildCorrectionBox(ChatMessage msg, int index) {
     final isExpanded = _expandedCorrectionIndices.contains(index);
     
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.background,
-        borderRadius: BorderRadius.zero,
-        border: Border.all(color: AppTheme.info.withOpacity(AppTheme.opStrong)),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: Border.all(color: AppTheme.borderColor),
       ),
       child: Column(
         children: [
@@ -414,31 +332,29 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
                 }
               });
             },
-            borderRadius: BorderRadius.zero,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.spellcheck_rounded, color: AppTheme.info, size: 16),
+                      const Icon(Icons.spellcheck_rounded, color: AppTheme.success, size: 14),
                       const SizedBox(width: 8),
                       Text(
-                        'CORRECTION AVAILABLE',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
+                        'GRAMMAR ADVICE AVAILABLE',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.info,
-                          letterSpacing: 1,
+                          color: AppTheme.success,
                         ),
                       ),
                     ],
                   ),
                   Icon(
                     isExpanded ? Icons.remove_rounded : Icons.add_rounded,
-                    color: AppTheme.info,
-                    size: 20,
+                    color: AppTheme.textSecondary,
+                    size: 16,
                   )
                 ],
               ),
@@ -448,74 +364,59 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
             secondChild: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              color: AppTheme.background.withOpacity(0.3),
               width: double.infinity,
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16, top: 4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Divider(color: AppTheme.info.withOpacity(AppTheme.opMedium), height: 1),
-                  const SizedBox(height: 12),
-                  
-                  Text('CORRECTED:', style: GoogleFonts.outfit(fontSize: 10, color: AppTheme.info, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                  const Text(
+                    'RECOMENDED SYNTAX:',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     msg.correctedText!,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: GoogleFonts.inter(color: AppTheme.success, fontSize: 13, fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 16),
-                  
-                  if (msg.explanation != null) ...[
-                    Text('EXPLANATION:', style: GoogleFonts.outfit(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                  if (msg.explanation != null && msg.explanation!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'EXPLANATION:',
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       msg.explanation!,
-                      style: GoogleFonts.outfit(fontSize: 14, color: AppTheme.textSecondary, height: 1.4),
+                      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, height: 1.4),
                     ),
                   ],
                 ],
               ),
             ),
             crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 250),
+            duration: const Duration(milliseconds: 200),
           )
         ],
       ),
     );
   }
 
-  Widget _buildAILoadingBubble() {
+  Widget _buildAILoadingIndicator() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity),
-          ),
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'AI',
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               color: AppTheme.primary,
-              fontWeight: FontWeight.w900,
-              fontSize: 14,
-              letterSpacing: 1,
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
             ),
           ),
-          const SizedBox(width: 16),
-          const SizedBox(
-            height: 24,
-            child: SpinKitThreeBounce(color: AppTheme.primary, size: 16),
-          ),
+          const SizedBox(width: 12),
+          const SpinKitThreeBounce(color: AppTheme.textSecondary, size: 14),
         ],
       ),
     );
@@ -523,52 +424,27 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
 
   Widget _buildInputBar() {
     return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity))),
-      ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+      color: AppTheme.background,
       child: Row(
         children: [
           Expanded(
             child: TextField(
-              controller: _msgController,
+              controller: _inputController,
               textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
-              style: GoogleFonts.outfit(color: AppTheme.textPrimary, fontSize: 16),
-              decoration: InputDecoration(
-                hintText: 'TYPE MESSAGE...',
-                hintStyle: GoogleFonts.outfit(color: AppTheme.textSecondary.withOpacity(AppTheme.opBold), fontSize: 14, letterSpacing: 1),
-                filled: true,
-                fillColor: AppTheme.background,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                border: const OutlineInputBorder(
-                  borderRadius: BorderRadius.zero,
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.zero,
-                  borderSide: BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity)),
-                ),
-                focusedBorder: const OutlineInputBorder(
-                  borderRadius: BorderRadius.zero,
-                  borderSide: BorderSide(color: AppTheme.primary, width: 2),
-                ),
+              onSubmitted: (_) => _send(),
+              style: const TextStyle(fontSize: 13),
+              decoration: const InputDecoration(
+                hintText: 'Type practice sentence...',
+                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               ),
             ),
           ),
-          const SizedBox(width: 16),
-          Material(
-            color: AppTheme.primary,
-            borderRadius: BorderRadius.zero,
-            child: InkWell(
-              onTap: _sendMessage,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: const Icon(Icons.send_rounded, color: Colors.white),
-              ),
-            ),
-          )
+          const SizedBox(width: 12),
+          IconButton(
+            icon: const Icon(Icons.send_rounded, color: AppTheme.primary),
+            onPressed: _send,
+          ),
         ],
       ),
     );

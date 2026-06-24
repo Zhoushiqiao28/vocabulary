@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../models/models.dart';
 import '../providers/providers.dart';
+import '../theme/app_theme.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -56,7 +56,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     try {
       final gemini = ref.read(geminiServiceProvider);
-      // We test with the current text field value, not saved state
       final result = await gemini.testConnection(_apiKeyController.text.trim());
       final success = result['success'] as bool? ?? false;
       
@@ -95,11 +94,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('SETTINGS SAVED', style: GoogleFonts.outfit(fontWeight: FontWeight.w700, letterSpacing: 1.0)),
-        backgroundColor: const Color(0xFFE10600),
+        content: Text('SETTINGS SAVED', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.5)),
+        backgroundColor: AppTheme.success,
         behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        margin: const EdgeInsets.all(24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMd)),
       ),
     );
     Navigator.of(context).pop();
@@ -108,172 +106,157 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          'SETTINGS',
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 2.0,
-            color: Colors.white,
-          ),
-        ),
+        title: const Text('SETTINGS'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildSectionTitle('PROFILE'),
-              const SizedBox(height: 24),
+              _buildSectionTitle('Profile Configuration'),
+              const SizedBox(height: 16),
               _buildTextField(
                 controller: _nameController,
                 label: 'NAME',
                 hint: 'Enter your name',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               _buildTextField(
                 controller: _interestsController,
-                label: 'INTERESTS (COMMA SEPARATED)',
-                hint: 'e.g., F1, Programming, Cooking',
+                label: 'LEARNING INTERESTS (COMMA SEPARATED)',
+                hint: 'e.g., Finance, Tech, Art, Gardening',
               ),
               
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
               
-              _buildSectionTitle('GOALS'),
-              const SizedBox(height: 24),
+              _buildSectionTitle('Daily Target Goals'),
+              const SizedBox(height: 12),
               Text(
-                'DAILY TARGET',
-                style: GoogleFonts.outfit(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.5),
-                  letterSpacing: 1.0,
+                'DAILY REVIEW TARGET COUNT',
+                style: GoogleFonts.inter(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textSecondary,
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderThemeData(
-                        activeTrackColor: const Color(0xFFE10600),
-                        inactiveTrackColor: Colors.white.withOpacity(0.1),
-                        thumbColor: Colors.white,
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                      ),
-                      child: Slider(
-                        value: _dailyTarget.toDouble(),
-                        min: 5,
-                        max: 50,
-                        divisions: 9,
-                        onChanged: (val) {
-                          setState(() {
-                            _dailyTarget = val.toInt();
-                          });
-                        },
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: AppTheme.cardDecoration(),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderThemeData(
+                          activeTrackColor: AppTheme.primary,
+                          inactiveTrackColor: AppTheme.borderColor,
+                          thumbColor: Colors.white,
+                          trackHeight: 2,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                        ),
+                        child: Slider(
+                          value: _dailyTarget.toDouble(),
+                          min: 5,
+                          max: 50,
+                          divisions: 9,
+                          onChanged: (val) {
+                            setState(() {
+                              _dailyTarget = val.toInt();
+                            });
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    '$_dailyTarget',
-                    style: GoogleFonts.outfit(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                    const SizedBox(width: 16),
+                    Text(
+                      '$_dailyTarget',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
               
-              _buildSectionTitle('AI ENGINE'),
-              const SizedBox(height: 24),
+              _buildSectionTitle('AI Language Engine'),
+              const SizedBox(height: 16),
               _buildTextField(
                 controller: _apiKeyController,
                 label: 'GEMINI API KEY',
-                hint: 'AIz...',
+                hint: 'AIzaSy...',
                 obscureText: true,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               
               Text(
-                'MODEL',
-                style: GoogleFonts.outfit(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.5),
-                  letterSpacing: 1.0,
+                'GEMINI ENGINE MODEL',
+                style: GoogleFonts.inter(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textSecondary,
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
+              const SizedBox(height: 8),
+              Row(
                 children: [
-                  _buildModelChip('gemini-2.5-flash', 'Flash (Fast)'),
-                  _buildModelChip('gemini-2.5-pro', 'Pro (Smart)'),
+                  Expanded(child: _buildModelChoice('gemini-2.5-flash', 'Flash (Fast / Default)')),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildModelChoice('gemini-2.5-pro', 'Pro (Smart / Creative)')),
                 ],
               ),
               
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               
-              // Test Connection Button (Sharp outline)
+              // Test Connection Button
               OutlinedButton(
                 onPressed: _isTesting ? null : _testConnection,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(color: Colors.white.withOpacity(0.2)),
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                ),
                 child: _isTesting
                     ? const SizedBox(
                         width: 16, height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.textSecondary),
                       )
-                    : Text(
-                        'TEST CONNECTION',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
+                    : const Text('TEST API CONNECTION'),
               ),
               
               if (_testSuccess != null) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.all(16),
-                  color: _testSuccess! ? const Color(0xFF34D399).withOpacity(0.1) : const Color(0xFFF87171).withOpacity(0.1),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _testSuccess! ? AppTheme.success.withOpacity(0.06) : AppTheme.error.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    border: Border.all(
+                      color: _testSuccess! ? AppTheme.success.withOpacity(0.3) : AppTheme.error.withOpacity(0.3),
+                    ),
+                  ),
                   child: Row(
                     children: [
                       Icon(
-                        _testSuccess! ? Icons.check_circle_outline : Icons.error_outline,
-                        color: _testSuccess! ? const Color(0xFF34D399) : const Color(0xFFF87171),
-                        size: 20,
+                        _testSuccess! ? Icons.check_circle_outline_rounded : Icons.error_outline_rounded,
+                        color: _testSuccess! ? AppTheme.success : AppTheme.error,
+                        size: 16,
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _testMessage ?? '',
-                          style: GoogleFonts.outfit(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: _testSuccess! ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                            color: _testSuccess! ? AppTheme.success : AppTheme.error,
                           ),
                         ),
                       ),
@@ -282,28 +265,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
               
-              const SizedBox(height: 64),
+              const SizedBox(height: 48),
               
-              // Save Button (Full bleed red)
+              // Save Button
               ElevatedButton(
                 onPressed: _saveSettings,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE10600),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  elevation: 0,
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                ),
-                child: Text(
-                  'SAVE CHANGES',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 2.0,
-                  ),
-                ),
+                child: const Text('SAVE CONFIGURATION'),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -314,11 +283,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: GoogleFonts.outfit(
-        fontSize: 24,
-        fontWeight: FontWeight.w800,
-        color: Colors.white,
-        letterSpacing: -0.5,
+      style: GoogleFonts.inter(
+        fontSize: 15,
+        fontWeight: FontWeight.bold,
+        color: AppTheme.textPrimary,
+        letterSpacing: -0.3,
       ),
     );
   }
@@ -334,39 +303,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.outfit(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Colors.white.withOpacity(0.5),
-            letterSpacing: 1.0,
+          style: GoogleFonts.inter(
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textSecondary,
+            letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         TextField(
           controller: controller,
           obscureText: obscureText,
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            color: Colors.white,
-          ),
+          style: const TextStyle(fontSize: 13),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.outfit(color: Colors.white.withOpacity(0.2)),
-            filled: true,
-            fillColor: Colors.white.withOpacity(0.05),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: Color(0xFFE10600), width: 2),
-            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildModelChip(String modelValue, String label) {
+  Widget _buildModelChoice(String modelValue, String label) {
     final isSelected = _selectedModel == modelValue;
     return InkWell(
       onTap: () {
@@ -374,20 +331,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _selectedModel = modelValue;
         });
       },
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected ? AppTheme.primary.withOpacity(0.08) : Colors.transparent,
           border: Border.all(
-            color: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
+            color: isSelected ? AppTheme.primary : AppTheme.borderColor,
           ),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
-        child: Text(
-          label,
-          style: GoogleFonts.outfit(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? Colors.black : Colors.white,
+        child: Center(
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color: isSelected ? AppTheme.textPrimary : AppTheme.textSecondary,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),

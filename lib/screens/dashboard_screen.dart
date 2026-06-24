@@ -16,7 +16,21 @@ import 'word_list_screen.dart';
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
-  void _startLearning(
+  // Start daily session pre-configured with DUE words
+  void _startDueReview(BuildContext context, int totalWords) {
+    final config = LearningConfig(
+      direction: LanguageDirection.enToJa,
+      rangeType: RangeType.due,
+      orderType: OrderType.random,
+      questionCount: 9999, // Review all due words
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => CardLearningScreen(config: config)),
+    );
+  }
+
+  // Open custom learning configuration
+  void _startLearningConfig(
     BuildContext context,
     int totalWordsCount, {
     required bool isTest,
@@ -45,429 +59,820 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(userProfileProvider);
     final words = ref.watch(wordListProvider);
-    final masteredCount = words.where((e) => e.status == 1).toList().length;
+
+    final now = DateTime.now();
+    // Count reviewed today
+    final todayReviewedCount = words.where((w) {
+      if (w.reviewedAt == null) return false;
+      final d = w.reviewedAt!;
+      return d.year == now.year && d.month == now.month && d.day == now.day;
+    }).length;
+
+    // Count due words (unlearned OR nextReviewAt <= now)
+    final dueWords = words.where((w) {
+      return w.nextReviewAt == null || w.nextReviewAt!.isBefore(now);
+    }).toList();
+
+    // Stats
+    final masteredCount = words.where((w) => w.status == 1).length;
+    final weakCount = words.where((w) => w.status == 2).length;
+    final unlearnedCount = words.where((w) => w.status == 0).length;
+
+    // Past 7 Days Sparkline Data
+    final List<double> chartData = List.generate(7, (i) {
+      final day = now.subtract(Duration(days: 6 - i));
+      return words.where((w) {
+        if (w.reviewedAt == null) return false;
+        final d = w.reviewedAt!;
+        return d.year == day.year && d.month == day.month && d.day == day.day;
+      }).length.toDouble();
+    });
+
     final screenWidth = MediaQuery.of(context).size.width;
-    final isWide = screenWidth >= 700;
+    final isWide = screenWidth >= 800;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A), // Strict dark canvas
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: isWide
-            ? _buildWideLayout(context, profile, words, masteredCount)
-            : _buildNarrowLayout(context, profile, words, masteredCount),
+            ? _buildWideLayout(context, profile, words, todayReviewedCount, dueWords.length, masteredCount, weakCount, unlearnedCount, chartData)
+            : _buildNarrowLayout(context, profile, words, todayReviewedCount, dueWords.length, masteredCount, weakCount, unlearnedCount, chartData),
       ),
     );
   }
 
   // ═══════════════════════════════════════════════
-  // NARROW LAYOUT (Mobile < 700px)
+  // NARROW LAYOUT (Mobile < 800px)
   // ═══════════════════════════════════════════════
-  Widget _buildNarrowLayout(BuildContext context, dynamic profile, List<Word> words, int masteredCount) {
+  Widget _buildNarrowLayout(
+    BuildContext context,
+    UserProfile profile,
+    List<Word> words,
+    int todayReviewed,
+    int dueCount,
+    int mastered,
+    int weak,
+    int unlearned,
+    List<double> chartData,
+  ) {
     return Column(
+      children: [
+        // Mobile Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'vocaba',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              Row(
+                children: [
+                  _buildStreakChip(profile.streakDays),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    icon: const Icon(Icons.settings_rounded, size: 18),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1, thickness: 1),
+
+        // Scrollable Body
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+            children: [
+              _buildGreeting(profile.name, dueCount),
+              const SizedBox(height: 16),
+              _buildSessionControlPanel(context, dueCount, todayReviewed, profile.dailyTarget, words.length),
+              const SizedBox(height: 24),
+              
+              _buildSectionHeader('Weekly Activity'),
+              const SizedBox(height: 8),
+              SizedBox(height: 60, child: _buildSparklineCard(chartData)),
+              const SizedBox(height: 24),
+
+              _buildSectionHeader('Curriculum'),
+              const SizedBox(height: 8),
+              _buildModesPanel(context, words.length),
+              const SizedBox(height: 24),
+
+              _buildSectionHeader('Vocabulary Status'),
+              const SizedBox(height: 8),
+              _buildStatsRow(mastered, weak, unlearned),
+              const SizedBox(height: 24),
+
+              _buildSectionHeader('Recently Reviewed'),
+              const SizedBox(height: 8),
+              _buildRecentWordsTable(context, words),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // WIDE LAYOUT (Desktop ≥ 800px)
+  // ═══════════════════════════════════════════════
+  Widget _buildWideLayout(
+    BuildContext context,
+    UserProfile profile,
+    List<Word> words,
+    int todayReviewed,
+    int dueCount,
+    int mastered,
+    int weak,
+    int unlearned,
+    List<double> chartData,
+  ) {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Top Header
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: _buildHeader(context, profile),
+        // Left Column: Persistent Sidebar (Width: 260px)
+        Container(
+          width: 250,
+          decoration: const BoxDecoration(
+            border: Border(
+              right: BorderSide(color: AppTheme.borderColor, width: 1.0),
+            ),
+          ),
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'vocaba',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: -0.6,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Sidebar Navigation items
+              _buildSidebarItem(context, Icons.dashboard_outlined, 'Dashboard', null),
+              _buildSidebarItem(context, Icons.menu_book_rounded, 'Word Library', () {
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => const WordListScreen()));
+              }),
+              _buildSidebarItem(context, Icons.headset_mic_rounded, 'AI Radio Chat', () {
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ChatTestScreen()));
+              }),
+              _buildSidebarItem(context, Icons.settings_rounded, 'Settings', () {
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
+              }),
+              
+              const Spacer(),
+              
+              // Weekly Sparkline In Sidebar
+              Text(
+                'WEEKLY ACTIVITY',
+                style: GoogleFonts.inter(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textSecondary,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(height: 60, child: _buildSparklineCard(chartData)),
+              const SizedBox(height: 24),
+
+              // Calendar Heatmap trigger
+              OutlinedButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => const LearningCalendarDialog(),
+                  );
+                },
+                icon: const Icon(Icons.calendar_today_rounded, size: 12),
+                label: const Text('Learning Calendar', style: TextStyle(fontSize: 11)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 32),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Profile / Streak at bottom
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          profile.name,
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          profile.interests.isNotEmpty ? profile.interests.first : 'Vocabulary Builder',
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 10,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildStreakChip(profile.streakDays),
+                ],
+              )
+            ],
+          ),
         ),
 
-        // Center: Giant Progress Ring
+        // Right Column: Main Workspace Panel
         Expanded(
-          child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(32.0),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildGiantProgressRing(profile, words),
-                const SizedBox(height: 32),
-                _buildMinimalStatsLine(profile, masteredCount),
+                _buildGreeting(profile.name, dueCount),
+                const SizedBox(height: 24),
+
+                // Main Session CTA Banner
+                _buildSessionControlPanel(context, dueCount, todayReviewed, profile.dailyTarget, words.length),
+                const SizedBox(height: 28),
+
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left partition: Curriculum & Stats
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionHeader('Curriculum Modes'),
+                          const SizedBox(height: 10),
+                          _buildModesPanel(context, words.length),
+                          const SizedBox(height: 24),
+                          
+                          _buildSectionHeader('Vocabulary Status'),
+                          const SizedBox(height: 10),
+                          _buildStatsRow(mastered, weak, unlearned),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    // Right partition: Recently Reviewed list
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionHeader('Recently Reviewed'),
+                          const SizedBox(height: 10),
+                          _buildRecentWordsTable(context, words),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
         ),
-
-        // Bottom Actions (Full bleed)
-        _buildSessionBand(context, words.length, profile),
-        _buildModeList(context, words.length),
-        
-        // Footer
-        Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: _buildFooter(masteredCount, words.length),
-        ),
       ],
     );
   }
 
   // ═══════════════════════════════════════════════
-  // WIDE LAYOUT (Desktop ≥ 700px)
-  // ═══════════════════════════════════════════════
-  Widget _buildWideLayout(BuildContext context, dynamic profile, List<Word> words, int masteredCount) {
-    return Row(
-      children: [
-        // Left Side: Typography and Ring
-        Expanded(
-          flex: 1,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 32.0),
-                child: _buildHeader(context, profile),
-              ),
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildGiantProgressRing(profile, words),
-                      const SizedBox(height: 32),
-                      _buildMinimalStatsLine(profile, masteredCount),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Divider
-        Container(
-          width: 1,
-          color: Colors.white.withOpacity(0.05),
-        ),
-        // Right Side: Actions
-        Expanded(
-          flex: 1,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              _buildSessionBand(context, words.length, profile),
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: _buildModeList(context, words.length),
-              ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 32.0),
-                child: _buildFooter(masteredCount, words.length),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ═══════════════════════════════════════════════
-  // COMPONENTS
+  // REUSABLE SUB-WIDGETS
   // ═══════════════════════════════════════════════
 
-  // ── Header (Tiny, minimal) ──
-  Widget _buildHeader(BuildContext context, dynamic profile) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildGreeting(String name, int dueCount) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Good evening, ${profile.name}',
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: Colors.white.withOpacity(0.6),
-            letterSpacing: 0.3,
+          'Welcome back, $name.',
+          style: GoogleFonts.inter(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimary,
+            letterSpacing: -0.5,
           ),
         ),
-        Row(
-          children: [
-            _buildTinyIcon(context, Icons.menu_book_rounded, () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const WordListScreen()));
-            }),
-            const SizedBox(width: 16),
-            _buildTinyIcon(context, Icons.settings_rounded, () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
-            }),
-          ],
-        )
+        const SizedBox(height: 2),
+        Text(
+          dueCount > 0
+              ? 'You have $dueCount words scheduled for review under Spaced Repetition.'
+              : 'All scheduled words have been reviewed. Ready to learn more?',
+          style: const TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 12,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildTinyIcon(BuildContext context, IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Icon(icon, size: 16, color: Colors.white.withOpacity(0.4)),
+  // Streak Badge
+  Widget _buildStreakChip(int streakDays) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppTheme.warning.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(4.0),
+        border: Border.all(color: AppTheme.warning.withOpacity(0.2)),
+      ),
+      child: Text(
+        '${streakDays}d streak',
+        style: const TextStyle(
+          color: AppTheme.warning,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 
-  // ── Giant Progress Ring ──
-  Widget _buildGiantProgressRing(dynamic profile, List<Word> words) {
-    final now = DateTime.now();
-    final todayCount = words.where((w) {
-      if (w.reviewedAt == null) return false;
-      final d = w.reviewedAt!;
-      return d.year == now.year && d.month == now.month && d.day == now.day;
-    }).length;
-    final target = profile.dailyTarget;
-    final double progress = target > 0 ? (todayCount / target).clamp(0.0, 1.0) : 0.0;
-    
-    return SizedBox(
-      width: 160,
-      height: 160,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox(
-            width: 160,
-            height: 160,
-            child: CircularProgressIndicator(
-              value: progress == 0 ? 0.005 : progress,
-              strokeWidth: 3, // Very thin stroke
-              backgroundColor: const Color(0xFF1A1A1A),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE10600)),
+  // Sidebar navigation item
+  Widget _buildSidebarItem(BuildContext context, IconData icon, String title, VoidCallback? onTap) {
+    final active = onTap == null;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4.0),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: active
+                ? BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  )
+                : null,
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 16,
+                  color: active ? AppTheme.primary : AppTheme.textSecondary,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                    color: active ? AppTheme.textPrimary : AppTheme.textSecondary,
+                  ),
+                )
+              ],
             ),
           ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$todayCount',
-                style: GoogleFonts.outfit(
-                  fontSize: 64,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  height: 1.0,
-                  letterSpacing: -2.0,
+        ),
+      ),
+    );
+  }
+
+  // Core CTA Session Panel
+  Widget _buildSessionControlPanel(
+    BuildContext context,
+    int dueCount,
+    int todayReviewed,
+    int dailyTarget,
+    int totalWords,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      decoration: AppTheme.cardDecoration(withShadow: false),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'DAILY SESSION',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primary,
+                    letterSpacing: 0.8,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '/ $target',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white.withOpacity(0.4),
+                const SizedBox(height: 6),
+                Text(
+                  '$todayReviewed / $dailyTarget reviewed today',
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  'Target progress indicator. $dueCount words remaining due.',
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Linear Progress bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2.0),
+                  child: SizedBox(
+                    height: 4,
+                    child: LinearProgressIndicator(
+                      value: dailyTarget > 0 ? (todayReviewed / dailyTarget).clamp(0.0, 1.0) : 0.0,
+                      backgroundColor: const Color(0xFF2E2E33),
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                    ),
+                  ),
+                )
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          ElevatedButton(
+            onPressed: () => _startDueReview(context, totalWords),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(120, 42),
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(dueCount > 0 ? 'Review $dueCount' : 'Start Review'),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.inter(
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        color: AppTheme.textSecondary,
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+
+  // Sparkline chart card
+  Widget _buildSparklineCard(List<double> data) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      decoration: AppTheme.cardDecoration(),
+      child: CustomPaint(
+        painter: SparklinePainter(data),
+        child: Container(),
+      ),
+    );
+  }
+
+  // Stats Counters
+  Widget _buildStatsRow(int mastered, int weak, int unlearned) {
+    return Row(
+      children: [
+        Expanded(child: _buildStatCell('MASTERED', mastered, AppTheme.success)),
+        const SizedBox(width: 12),
+        Expanded(child: _buildStatCell('WEAK', weak, AppTheme.error)),
+        const SizedBox(width: 12),
+        Expanded(child: _buildStatCell('UNLEARNED', unlearned, AppTheme.textSecondary)),
+      ],
+    );
+  }
+
+  Widget _buildStatCell(String title, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
+      decoration: AppTheme.cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: color,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$count',
+            style: GoogleFonts.inter(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  // Menu items for Quiz, Spelling, Radio
+  Widget _buildModesPanel(BuildContext context, int totalWords) {
+    return Container(
+      decoration: AppTheme.cardDecoration(),
+      child: Column(
+        children: [
+          _buildModeRow(
+            context,
+            '01 / QUIZ',
+            'Multiple choice retention test',
+            () => _startLearningConfig(
+              context, totalWords,
+              isTest: true, isSpelling: false,
+              screenBuilder: (config) => QuizTestScreen(config: config),
+            ),
+          ),
+          const Divider(height: 1, thickness: 1),
+          _buildModeRow(
+            context,
+            '02 / SPELLING',
+            'Active dictation writing assessment',
+            () => _startLearningConfig(
+              context, totalWords,
+              isTest: true, isSpelling: true,
+              screenBuilder: (config) => SpellingTestScreen(config: config),
+            ),
+          ),
+          const Divider(height: 1, thickness: 1),
+          _buildModeRow(
+            context,
+            '03 / RADIO CHAT',
+            'Interactive simulated AI conversation',
+            () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const ChatTestScreen()),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ── Minimal Stats Line ──
-  Widget _buildMinimalStatsLine(dynamic profile, int masteredCount) {
-    final int streak = profile.streakDays is int ? profile.streakDays : 0;
-    return Text(
-      '🔥 $streak日  •  $masteredCount語 習得済',
-      style: GoogleFonts.outfit(
-        fontSize: 12,
-        fontWeight: FontWeight.w400,
-        color: Colors.white.withOpacity(0.5),
-        letterSpacing: 0.5,
-      ),
-    );
-  }
-
-  // ── Full-bleed Session Band ──
-  Widget _buildSessionBand(BuildContext context, int totalWordsCount, dynamic profile) {
-    final interest = profile.interests.isNotEmpty ? profile.interests.first : '';
-    final hasKey = profile.apiKey.isNotEmpty;
-    final subText = hasKey && interest.isNotEmpty
-        ? 'あなたの興味（$interest）に基づいた例文で学習を開始'
-        : '暗記カードで学習を開始';
-
-    return Material(
-      color: const Color(0xFFE10600), // Deep red, no padding around it, no radius
-      child: InkWell(
-        onTap: () {
-          _startLearning(
-            context,
-            totalWordsCount,
-            isTest: false,
-            isSpelling: false,
-            screenBuilder: (config) => CardLearningScreen(config: config),
-          );
-        },
-        child: Container(
-          width: double.infinity,
-          height: 80,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'SESSION',
-                      style: GoogleFonts.outfit(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subText,
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (!hasKey)
-                Padding(
-                  padding: const EdgeInsets.only(right: 12.0),
-                  child: Text(
-                    'モック動作中',
-                    style: GoogleFonts.outfit(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black.withOpacity(0.5),
-                    ),
+  Widget _buildModeRow(BuildContext context, String code, String desc, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  code,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: Colors.white.withOpacity(0.5),
-                size: 16,
-              ),
-            ],
-          ),
+                Text(
+                  desc,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 12,
+              color: AppTheme.textMuted,
+            )
+          ],
         ),
       ),
     );
   }
 
-  // ── Mode List (Card-less) ──
-  Widget _buildModeList(BuildContext context, int totalWordsCount) {
-    return Column(
-      children: [
-        _buildListDivider(),
-        _buildListItem(
-          icon: Icons.speed_rounded,
-          title: 'QUIZ',
-          subtitle: '4択テストで瞬発力を測定',
-          onTap: () => _startLearning(
-            context, totalWordsCount,
-            isTest: true, isSpelling: false,
-            screenBuilder: (config) => QuizTestScreen(config: config),
-          ),
-        ),
-        _buildListDivider(),
-        _buildListItem(
-          icon: Icons.edit_rounded,
-          title: 'SPELL',
-          subtitle: 'スペルテストで正確性を強化',
-          onTap: () => _startLearning(
-            context, totalWordsCount,
-            isTest: true, isSpelling: true,
-            screenBuilder: (config) => SpellingTestScreen(config: config),
-          ),
-        ),
-        _buildListDivider(),
-        _buildListItem(
-          icon: Icons.headset_mic_rounded,
-          title: 'RADIO',
-          subtitle: 'AIが自動で無線会話に組み込み',
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const ChatTestScreen()),
-          ),
-        ),
-        _buildListDivider(),
-      ],
-    );
-  }
+  // Recently Reviewed Data Table
+  Widget _buildRecentWordsTable(BuildContext context, List<Word> words) {
+    final now = DateTime.now();
+    // Sort words by reviewedAt desc, taking only the ones actually reviewed
+    final reviewedWords = words
+        .where((w) => w.reviewedAt != null)
+        .toList();
+    reviewedWords.sort((a, b) => b.reviewedAt!.compareTo(a.reviewedAt!));
+    
+    final recent = reviewedWords.take(7).toList();
 
-  Widget _buildListItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: Colors.white.withOpacity(0.4)),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.4),
-                      ),
-                    ),
-                  ],
+    return Container(
+      decoration: AppTheme.cardDecoration(),
+      child: recent.isEmpty
+          ? const SizedBox(
+              height: 180,
+              child: Center(
+                child: Text(
+                  'No reviews recorded yet today.',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white.withOpacity(0.3),
-                size: 20,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+            )
+          : Column(
+              children: [
+                // Table header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                  color: AppTheme.background.withOpacity(0.5),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          'WORD',
+                          style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          'MEANING',
+                          style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'STATUS',
+                          style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'NEXT',
+                          style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, thickness: 1),
 
-  Widget _buildListDivider() {
-    return Container(
-      height: 1,
-      color: Colors.white.withOpacity(0.05), // Hairline dark grey
-    );
-  }
+                // Table rows
+                ...recent.map((word) {
+                  final due = word.nextReviewAt == null || word.nextReviewAt!.isBefore(now);
+                  String nextText = 'Due';
+                  Color nextColor = AppTheme.warning;
 
-  // ── Footer ──
-  Widget _buildFooter(int masteredCount, int totalCount) {
-    final percent = totalCount > 0 ? (masteredCount / totalCount * 100).toStringAsFixed(1) : '0';
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          '$masteredCount / $totalCount語 ($percent%)',
-          style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.3), fontSize: 10),
-        ),
-        Text(
-          'v4.0',
-          style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.3), fontSize: 10),
-        ),
-      ],
+                  if (!due && word.nextReviewAt != null) {
+                    final diff = word.nextReviewAt!.difference(now).inDays;
+                    if (diff <= 0) {
+                      nextText = 'Tomorrow';
+                      nextColor = AppTheme.textSecondary;
+                    } else {
+                      nextText = 'in ${diff + 1}d';
+                      nextColor = AppTheme.textSecondary;
+                    }
+                  }
+
+                  Color statusColor = AppTheme.textSecondary;
+                  String statusText = 'New';
+                  if (word.status == 1) {
+                    statusColor = AppTheme.success;
+                    statusText = 'Mastered';
+                  } else if (word.status == 2) {
+                    statusColor = AppTheme.error;
+                    statusText = 'Weak';
+                  }
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: AppTheme.borderColor, width: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            word.spelling,
+                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            word.meaningJa,
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            statusText,
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            nextText,
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: nextColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
     );
   }
 }
 
+// ── Custom Sparkline Painter ──
+class SparklinePainter extends CustomPainter {
+  final List<double> data;
+  SparklinePainter(this.data);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty) return;
+
+    final paint = Paint()
+      ..color = AppTheme.primary
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    final double stepX = size.width / (data.length - 1);
+    final double maxVal = data.reduce(max);
+    final double minVal = data.reduce(min);
+    final double range = (maxVal - minVal) == 0 ? 1.0 : (maxVal - minVal);
+
+    for (int i = 0; i < data.length; i++) {
+      final double x = i * stepX;
+      // Invert Y axis
+      final double y = size.height - ((data[i] - minVal) / range * (size.height - 12) + 6);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+
+    canvas.drawPath(path, paint);
+
+    // Draw point nodes
+    final dotPaint = Paint()
+      ..color = AppTheme.primary
+      ..style = PaintingStyle.fill;
+    final dotOuterPaint = Paint()
+      ..color = AppTheme.surface
+      ..style = PaintingStyle.fill;
+
+    for (int i = 0; i < data.length; i++) {
+      final double x = i * stepX;
+      final double y = size.height - ((data[i] - minVal) / range * (size.height - 12) + 6);
+      canvas.drawCircle(Offset(x, y), 3.5, dotPaint);
+      canvas.drawCircle(Offset(x, y), 1.5, dotOuterPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
 // ═══════════════════════════════════════════════════════════
-// LEARNING CONFIG BOTTOM SHEET (Minimal version)
+// LEARNING CONFIG BOTTOM SHEET
 // ═══════════════════════════════════════════════════════════
 class _LearningConfigBottomSheet extends StatefulWidget {
   final bool isTest;
@@ -486,7 +891,7 @@ class _LearningConfigBottomSheet extends StatefulWidget {
 
 class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> {
   late LanguageDirection _direction;
-  RangeType _rangeType = RangeType.all;
+  RangeType _rangeType = RangeType.due; // Due by default under SM2
   OrderType _orderType = OrderType.random;
   int _questionCount = 10;
   
@@ -516,17 +921,16 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
 
   @override
   Widget build(BuildContext context) {
-    // A clean, minimal bottom sheet without heavy borders
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF141414), // Dark surface
-        borderRadius: BorderRadius.vertical(top: Radius.circular(0)), // Sharp edges or minimal radius. Let's use 0 for brutalism, or very small.
+        color: AppTheme.elevated,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
       ),
       padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 32,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+        left: 20,
+        right: 20,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -535,19 +939,18 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
           children: [
             Text(
               'CONFIGURATION',
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.white.withOpacity(0.5),
-                letterSpacing: 2.0,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textSecondary,
+                letterSpacing: 1.0,
               ),
-              textAlign: TextAlign.left,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
 
             if (!widget.isSpelling) ...[
               _buildSectionTitle('DIRECTION'),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(child: _buildChoiceItem('EN → JP', _direction == LanguageDirection.enToJa, () => setState(() => _direction = LanguageDirection.enToJa))),
@@ -555,21 +958,22 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                   Expanded(child: _buildChoiceItem('JP → EN', _direction == LanguageDirection.jaToEn, () => setState(() => _direction = LanguageDirection.jaToEn))),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
             ],
 
             _buildSectionTitle('SCOPE'),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: [
-                _buildFilterChip('ALL', RangeType.all),
-                _buildFilterChip('STAR', RangeType.favorites),
-                _buildFilterChip('NEW', RangeType.unlearned),
-                _buildFilterChip('WEAK', RangeType.weak),
-                _buildFilterChip('MASTERED', RangeType.mastered),
-                _buildFilterChip('CUSTOM', RangeType.customRange),
+                _buildFilterChip('DUE (復習対象)', RangeType.due),
+                _buildFilterChip('ALL (全体)', RangeType.all),
+                _buildFilterChip('STAR (星)', RangeType.favorites),
+                _buildFilterChip('NEW (未学習)', RangeType.unlearned),
+                _buildFilterChip('WEAK (苦手)', RangeType.weak),
+                _buildFilterChip('MASTERED (習得)', RangeType.mastered),
+                _buildFilterChip('CUSTOM (範囲)', RangeType.customRange),
               ],
             ),
             const SizedBox(height: 12),
@@ -581,7 +985,7 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                     child: TextField(
                       controller: _startIdController,
                       keyboardType: TextInputType.number,
-                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 14),
+                      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
                       decoration: _inputDecoration('START ID'),
                     ),
                   ),
@@ -590,13 +994,13 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                     child: TextField(
                       controller: _endIdController,
                       keyboardType: TextInputType.number,
-                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 14),
+                      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
                       decoration: _inputDecoration('END ID'),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -609,13 +1013,13 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
             ] else ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
             ],
 
             _buildSectionTitle('ORDER'),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(child: _buildChoiceItem('RANDOM', _orderType == OrderType.random, () => setState(() => _orderType = OrderType.random))),
@@ -625,11 +1029,11 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                 Expanded(child: _buildChoiceItem('A-Z', _orderType == OrderType.alphabetical, () => setState(() => _orderType = OrderType.alphabetical))),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             if (widget.isTest) ...[
               _buildSectionTitle('QUESTIONS'),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(child: _buildChoiceItem('10', _questionCount == 10, () => setState(() => _questionCount = 10))),
@@ -641,42 +1045,31 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                   Expanded(child: _buildChoiceItem('ALL', _questionCount == 9999, () => setState(() => _questionCount = 9999))),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
             ],
 
-            SizedBox(
-              height: 56,
-              child: ElevatedButton(
-                onPressed: () {
-                  int startId = int.tryParse(_startIdController.text) ?? 1;
-                  int endId = int.tryParse(_endIdController.text) ?? 100;
-                  if (startId < 1) startId = 1;
-                  if (endId < startId) endId = startId + 10;
+            ElevatedButton(
+              onPressed: () {
+                int startId = int.tryParse(_startIdController.text) ?? 1;
+                int endId = int.tryParse(_endIdController.text) ?? 100;
+                if (startId < 1) startId = 1;
+                if (endId < startId) endId = startId + 10;
 
-                  Navigator.pop(context, LearningConfig(
-                    direction: _direction,
-                    rangeType: _rangeType,
-                    orderType: _orderType,
-                    startId: startId,
-                    endId: endId,
-                    questionCount: _questionCount,
-                  ));
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE10600),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)), // Sharp edges
-                ),
-                child: Text(
-                  'BEGIN',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2.0,
-                  ),
-                ),
+                Navigator.pop(context, LearningConfig(
+                  direction: _direction,
+                  rangeType: _rangeType,
+                  orderType: _orderType,
+                  startId: startId,
+                  endId: endId,
+                  questionCount: _questionCount,
+                ));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 44),
               ),
+              child: const Text('BEGIN'),
             ),
           ],
         ),
@@ -687,11 +1080,11 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: GoogleFonts.outfit(
+      style: GoogleFonts.inter(
         fontSize: 10,
-        fontWeight: FontWeight.w600,
-        color: Colors.white.withOpacity(0.3),
-        letterSpacing: 1.0,
+        fontWeight: FontWeight.bold,
+        color: AppTheme.textSecondary,
+        letterSpacing: 0.5,
       ),
     );
   }
@@ -699,23 +1092,23 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   Widget _buildChoiceItem(String title, bool selected, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: selected ? const Color(0xFFE10600) : Colors.white.withOpacity(0.1),
-              width: 2,
-            ),
+          color: selected ? AppTheme.primary.withOpacity(0.08) : Colors.transparent,
+          border: Border.all(
+            color: selected ? AppTheme.primary : AppTheme.borderColor,
           ),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
         child: Center(
           child: Text(
             title,
-            style: GoogleFonts.outfit(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-              color: selected ? Colors.white : Colors.white.withOpacity(0.5),
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
             ),
           ),
         ),
@@ -727,18 +1120,20 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
     final selected = _rangeType == type;
     return InkWell(
       onTap: () => setState(() => _rangeType = type),
+      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? Colors.white.withOpacity(0.1) : Colors.transparent,
-          border: Border.all(color: selected ? Colors.white.withOpacity(0.2) : Colors.white.withOpacity(0.05)),
+          color: selected ? AppTheme.primary.withOpacity(0.12) : Colors.transparent,
+          border: Border.all(color: selected ? AppTheme.primary : AppTheme.borderColor),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         ),
         child: Text(
           label,
-          style: GoogleFonts.outfit(
-            fontSize: 11,
-            color: selected ? Colors.white : Colors.white.withOpacity(0.5),
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          style: GoogleFonts.inter(
+            fontSize: 10,
+            color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
@@ -748,15 +1143,17 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   Widget _buildQuickRangeButton(int start, int end) {
     return InkWell(
       onTap: () => _selectQuickRange(start, end),
+      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        margin: const EdgeInsets.only(right: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: AppTheme.borderColor),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         ),
         child: Text(
           '$start-$end',
-          style: GoogleFonts.outfit(fontSize: 10, color: Colors.white.withOpacity(0.5)),
+          style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
         ),
       ),
     );
@@ -765,13 +1162,11 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: GoogleFonts.outfit(color: Colors.white.withOpacity(0.3), fontSize: 10, letterSpacing: 1.0),
+      labelStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 10),
       filled: true,
-      fillColor: Colors.black,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      border: InputBorder.none,
-      enabledBorder: InputBorder.none,
-      focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFE10600))),
+      fillColor: AppTheme.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMd), borderSide: const BorderSide(color: AppTheme.borderColor)),
     );
   }
 }

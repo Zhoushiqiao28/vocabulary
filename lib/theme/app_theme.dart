@@ -1,109 +1,93 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// v3.0 Design System — "Restrained Luxury"
+/// v5.0 Design System — "Swiss Minimalist Workspace"
 /// 
-/// Design philosophy: McLaren hospitality suite × Swiss watchmaking.
-/// Consistency and restraint over decoration.
+/// Design philosophy: Stripe × Vercel.
+/// Focuses on structural grids, Inter typography, slate grays, and crisp accents.
 class AppTheme {
   // ─── Background Scale ───
-  static const Color background = Color(0xFF0A0A0A);
-  static const Color surface = Color(0xFF141414);
-  static const Color elevated = Color(0xFF1C1C1C);
-  static const Color hover = Color(0xFF242424);
+  static const Color background = Color(0xFF121214);
+  static const Color surface = Color(0xFF1C1C1F);
+  static const Color elevated = Color(0xFF26262B);
+  static const Color hover = Color(0xFF2E2E35);
 
-  // ─── Primary ───
-  static const Color primary = Color(0xFFE10600);
+  // ─── Primary (Intelligent Blue) ───
+  static const Color primary = Color(0xFF3569FD);
 
-  // ─── Semantic Colors ───
-  static const Color success = Color(0xFF34D399);   // 正解・習得済み
-  static const Color error = Color(0xFFF87171);      // 不正解・苦手
-  static const Color warning = Color(0xFFFBBF24);    // ストリーク・お気に入り
-  static const Color info = Color(0xFFA78BFA);       // AI・レベル
+  // ─── Semantic Colors (Muted, professional) ───
+  static const Color success = Color(0xFF10B981);   // Mastered
+  static const Color error = Color(0xFFEF4444);     // Weak
+  static const Color warning = Color(0xFFF59E0B);   // Favorite / Streak
+  static const Color info = Color(0xFF3B82F6);      // Info
 
-  // ─── Accent (use sparingly) ───
-  static const Color accent = Color(0xFFCCFF00);
+  // ─── Accent ───
+  static const Color accent = Color(0xFF3569FD);
 
   // ─── Text Scale ───
-  static const Color textPrimary = Color(0xFFF0F0F0);
-  static const Color textSecondary = Color(0xFF6B6B6B);
-  static const Color textMuted = Color(0xFF3D3D3D);
+  static const Color textPrimary = Color(0xFFECECED);
+  static const Color textSecondary = Color(0xFF8E8E93);
+  static const Color textMuted = Color(0xFF4A4A4F);
 
   // ─── Border ───
-  static const double borderSubtleOpacity = 0.05;
-  static const double borderMediumOpacity = 0.10;
+  static const double borderSubtleOpacity = 0.06;
+  static const double borderMediumOpacity = 0.12;
+  static const Color borderColor = Color(0xFF2E2E33);
 
   // ─── Backwards compatibility aliases ───
   static const Color secondary = info;
   static const Color cardBg = surface;
 
-  // ─── Border Radius Tokens (4 only) ───
-  static const double radiusSm = 6.0;
-  static const double radiusMd = 10.0;
-  static const double radiusLg = 14.0;
+  // ─── Border Radius Tokens (Rigid, professional) ───
+  static const double radiusSm = 4.0;
+  static const double radiusMd = 6.0;
+  static const double radiusLg = 8.0;
   static const double radiusFull = 9999.0;
 
-  // ─── Opacity Tokens (5 only) ───
+  // ─── Opacity Tokens ───
   static const double opSubtle = 0.04;
   static const double opLight = 0.08;
   static const double opMedium = 0.15;
   static const double opStrong = 0.30;
   static const double opBold = 0.50;
 
-  // ─── Shadow Presets ───
+  // ─── Shadow Presets (Soft, professional) ───
   static List<BoxShadow> get shadowCard => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.20),
-      blurRadius: 8,
+      color: Colors.black.withOpacity(0.15),
+      blurRadius: 4,
       offset: const Offset(0, 2),
     ),
   ];
 
   static List<BoxShadow> get shadowElevated => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.40),
-      blurRadius: 16,
-      offset: const Offset(0, 6),
+      color: Colors.black.withOpacity(0.30),
+      blurRadius: 12,
+      offset: const Offset(0, 4),
     ),
   ];
 
   // ─── Decoration Factories ───
 
-  /// Standard card: flat surface, subtle border, light shadow.
+  /// Standard panel decoration
   static BoxDecoration cardDecoration({
     Color? color,
     double radius = radiusMd,
-    bool withShadow = true,
+    bool withShadow = false,
   }) {
     return BoxDecoration(
       color: color ?? surface,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
-        color: Colors.white.withOpacity(borderSubtleOpacity),
-        width: 1,
+        color: borderColor,
+        width: 1.0,
       ),
       boxShadow: withShadow ? shadowCard : null,
     );
   }
 
-  /// Accent-striped card: 3px left border accent for emphasis.
-  /// Use with ClipRRect + Row([ accentStripe, content ]).
-  static BoxDecoration accentCardDecoration({
-    Color accentColor = primary,
-    double radius = radiusMd,
-  }) {
-    return BoxDecoration(
-      color: surface,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(
-        color: Colors.white.withOpacity(borderSubtleOpacity),
-        width: 1,
-      ),
-      boxShadow: shadowCard,
-    );
-  }
-
-  /// Elevated surface: for dialogs, bottom sheets.
+  /// Elevated panel decoration
   static BoxDecoration elevatedDecoration({
     double radius = radiusLg,
   }) {
@@ -111,14 +95,14 @@ class AppTheme {
       color: elevated,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
-        color: Colors.white.withOpacity(borderSubtleOpacity),
-        width: 1,
+        color: borderColor,
+        width: 1.0,
       ),
       boxShadow: shadowElevated,
     );
   }
 
-  /// Chip / Badge decoration.
+  /// Chip / Badge decoration
   static BoxDecoration chipDecoration({
     required Color color,
     bool selected = false,
@@ -128,55 +112,37 @@ class AppTheme {
       borderRadius: BorderRadius.circular(radiusSm),
       border: Border.all(
         color: color.withOpacity(selected ? opStrong : opMedium),
-        width: 1,
+        width: 1.0,
       ),
-    );
-  }
-
-  // ─── Backwards compat: glassBoxDecoration ───
-  static BoxDecoration glassBoxDecoration({
-    required Color color,
-    double borderRadius = radiusMd,
-    double borderWidth = 1.0,
-  }) {
-    return cardDecoration(
-      color: color.withOpacity(opLight),
-      radius: borderRadius,
     );
   }
 
   // ─── Theme Data ───
   static ThemeData get darkTheme {
-    final baseTextTheme = GoogleFonts.outfitTextTheme(
+    final baseTextTheme = GoogleFonts.interTextTheme(
       const TextTheme(
-        // Display — large numbers
         displayLarge: TextStyle(
-          fontSize: 36, fontWeight: FontWeight.w800,
+          fontSize: 32, fontWeight: FontWeight.bold,
           color: textPrimary, letterSpacing: -0.5,
         ),
-        // Headline — section headers
         displayMedium: TextStyle(
-          fontSize: 24, fontWeight: FontWeight.w700,
+          fontSize: 20, fontWeight: FontWeight.w600,
           color: textPrimary, letterSpacing: -0.3,
         ),
-        // Title
         titleLarge: TextStyle(
-          fontSize: 16, fontWeight: FontWeight.w600,
+          fontSize: 15, fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
-        // Body
         bodyLarge: TextStyle(
-          fontSize: 14, fontWeight: FontWeight.w400,
+          fontSize: 13, fontWeight: FontWeight.w400,
           color: textPrimary, height: 1.5,
         ),
-        // Caption
         bodyMedium: TextStyle(
-          fontSize: 14, color: textSecondary, height: 1.4,
+          fontSize: 13, color: textSecondary, height: 1.4,
         ),
-        // Small caption / labels
         labelSmall: TextStyle(
-          fontSize: 11, fontWeight: FontWeight.w500,
-          color: textSecondary, letterSpacing: 0.5,
+          fontSize: 10, fontWeight: FontWeight.w600,
+          color: textSecondary, letterSpacing: 0.8,
         ),
       ),
     );
@@ -197,20 +163,22 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          side: BorderSide(
-            color: Colors.white.withOpacity(borderSubtleOpacity),
-            width: 1,
+          side: const BorderSide(
+            color: borderColor,
+            width: 1.0,
           ),
         ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: background,
         elevation: 0,
-        centerTitle: true,
-        titleTextStyle: GoogleFonts.outfit(
-          fontSize: 18,
+        centerTitle: false,
+        iconTheme: const IconThemeData(color: textPrimary, size: 20),
+        titleTextStyle: GoogleFonts.inter(
+          fontSize: 15,
           fontWeight: FontWeight.w600,
           color: textPrimary,
+          letterSpacing: -0.2,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -218,44 +186,44 @@ class AppTheme {
           backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          minimumSize: const Size(double.infinity, 48),
+          minimumSize: const Size(double.infinity, 42),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMd),
           ),
-          textStyle: GoogleFonts.outfit(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
+          textStyle: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: textPrimary,
-          side: BorderSide(color: Colors.white.withOpacity(borderMediumOpacity)),
-          minimumSize: const Size(double.infinity, 48),
+          side: const BorderSide(color: borderColor),
+          minimumSize: const Size(double.infinity, 42),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMd),
           ),
-          textStyle: GoogleFonts.outfit(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
+          textStyle: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
           ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
-        hintStyle: TextStyle(color: textSecondary.withOpacity(0.5)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        hintStyle: const TextStyle(color: textMuted),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: BorderSide(color: Colors.white.withOpacity(borderSubtleOpacity)),
+          borderSide: const BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: BorderSide(color: Colors.white.withOpacity(borderSubtleOpacity)),
+          borderSide: const BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
@@ -267,11 +235,11 @@ class AppTheme {
         selectedColor: primary.withOpacity(opMedium),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusSm),
-          side: BorderSide(color: Colors.white.withOpacity(borderSubtleOpacity)),
+          side: const BorderSide(color: borderColor),
         ),
-        labelStyle: GoogleFonts.outfit(fontSize: 12),
+        labelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500),
       ),
-      dividerColor: Colors.white.withOpacity(borderSubtleOpacity),
+      dividerColor: borderColor,
     );
   }
 }

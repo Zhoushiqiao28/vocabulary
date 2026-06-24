@@ -10,6 +10,12 @@ class Word {
   bool isFavorite;
   final bool isSystem;
 
+  // Spaced Repetition (SM-2) fields
+  final DateTime? nextReviewAt;
+  final int intervalDays;
+  final int repetitions;
+  final double easeFactor;
+
   Word({
     required this.id,
     required this.spelling,
@@ -21,6 +27,10 @@ class Word {
     this.reviewedAt,
     this.isFavorite = false,
     this.isSystem = false,
+    this.nextReviewAt,
+    this.intervalDays = 0,
+    this.repetitions = 0,
+    this.easeFactor = 2.5,
   });
 
   Map<String, dynamic> toJson() => {
@@ -34,6 +44,10 @@ class Word {
         'reviewedAt': reviewedAt?.toIso8601String(),
         'isFavorite': isFavorite,
         'isSystem': isSystem,
+        'nextReviewAt': nextReviewAt?.toIso8601String(),
+        'intervalDays': intervalDays,
+        'repetitions': repetitions,
+        'easeFactor': easeFactor,
       };
 
   factory Word.fromJson(Map<String, dynamic> json) => Word(
@@ -49,6 +63,12 @@ class Word {
             : null,
         isFavorite: json['isFavorite'] ?? false,
         isSystem: json['isSystem'] ?? false,
+        nextReviewAt: json['nextReviewAt'] != null
+            ? DateTime.parse(json['nextReviewAt'])
+            : null,
+        intervalDays: json['intervalDays'] ?? 0,
+        repetitions: json['repetitions'] ?? 0,
+        easeFactor: (json['easeFactor'] ?? 2.5).toDouble(),
       );
 
   Word copyWith({
@@ -61,6 +81,10 @@ class Word {
     DateTime? reviewedAt,
     bool? isFavorite,
     bool? isSystem,
+    DateTime? nextReviewAt,
+    int? intervalDays,
+    int? repetitions,
+    double? easeFactor,
   }) {
     return Word(
       id: id,
@@ -73,6 +97,10 @@ class Word {
       reviewedAt: reviewedAt ?? this.reviewedAt,
       isFavorite: isFavorite ?? this.isFavorite,
       isSystem: isSystem ?? this.isSystem,
+      nextReviewAt: nextReviewAt ?? this.nextReviewAt,
+      intervalDays: intervalDays ?? this.intervalDays,
+      repetitions: repetitions ?? this.repetitions,
+      easeFactor: easeFactor ?? this.easeFactor,
     );
   }
 }
@@ -182,7 +210,7 @@ class UserProfile {
 }
 
 enum LanguageDirection { enToJa, jaToEn }
-enum RangeType { all, weak, favorites, unlearned, mastered, customRange }
+enum RangeType { all, weak, favorites, unlearned, mastered, customRange, due }
 enum OrderType { random, idOrder, alphabetical }
 
 class LearningConfig {

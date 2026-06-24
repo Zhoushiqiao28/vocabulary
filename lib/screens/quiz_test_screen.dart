@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'dart:math';
 import 'dart:async';
 import '../models/models.dart';
@@ -32,7 +33,6 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
   final FocusNode _keyboardFocusNode = FocusNode();
   Timer? _transitionTimer;
 
-  // TTS
   final FlutterTts _flutterTts = FlutterTts();
 
   @override
@@ -88,6 +88,12 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
       case RangeType.mastered:
         filtered = allWords.where((e) => e.status == 1).toList();
         break;
+      case RangeType.due:
+        final now = DateTime.now();
+        filtered = allWords.where((e) {
+          return e.nextReviewAt == null || e.nextReviewAt!.isBefore(now);
+        }).toList();
+        break;
       case RangeType.customRange:
         filtered = allWords
             .where((e) => e.id >= widget.config.startId && e.id <= widget.config.endId)
@@ -116,7 +122,6 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
         break;
     }
 
-    // Limit count
     final limit = widget.config.questionCount == 9999 ? filtered.length : widget.config.questionCount;
     _quizWords = filtered.take(limit).toList();
 
@@ -153,13 +158,6 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
       _hasAnswered = false;
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _keyboardFocusNode.requestFocus();
-      }
-    });
-
-    // Auto speak the word if direction is EN->JP
     if (isEnToJa) {
       _speak(targetWord.spelling);
     }
@@ -170,31 +168,25 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
 
     final targetWord = _quizWords[_currentIndex];
     final isEnToJa = widget.config.direction == LanguageDirection.enToJa;
-    final correctAnswer = isEnToJa ? targetWord.meaningJa : targetWord.spelling;
-    final isCorrect = option == correctAnswer;
-
-    // Auto speak the word on answer (especially for JA->EN)
-    _speak(targetWord.spelling);
+    final correctValue = isEnToJa ? targetWord.meaningJa : targetWord.spelling;
+    final isCorrect = option == correctValue;
 
     setState(() {
       _selectedOption = option;
       _hasAnswered = true;
       if (isCorrect) {
         _score++;
-        if (targetWord.status != 1) {
-          ref.read(wordListProvider.notifier).updateWordStatus(targetWord.id, 1);
-        }
+        // Update SRS status under SM-2 (1: Mastered)
+        ref.read(wordListProvider.notifier).updateWordStatus(targetWord.id, 1);
       } else {
         _wrongWords.add(targetWord);
+        // Update SRS status under SM-2 (2: Weak)
         ref.read(wordListProvider.notifier).updateWordStatus(targetWord.id, 2);
       }
     });
 
-    if (_currentIndex + 1 >= _quizWords.length) {
-      ref.read(userProfileProvider.notifier).recordLearningActivity();
-    }
-
-    _transitionTimer = Timer(const Duration(milliseconds: 2200), () {
+    // Auto navigate after 1.5s
+    _transitionTimer = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) {
         _nextQuestion();
       }
@@ -217,53 +209,19 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final allWords = ref.watch(wordListProvider);
-
     if (_isLoading) {
       return const Scaffold(
-        backgroundColor: Color(0xFF0A0A0A),
-        body: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
-      );
-    }
-
-    if (allWords.length < 4) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF0A0A0A),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Text('択一クイズ', style: GoogleFonts.outfit()),
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Text(
-              'クイズを開始するには、少なくとも4つ以上の単語が登録されている必要があります。',
-              style: GoogleFonts.outfit(color: AppTheme.textPrimary),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
+        backgroundColor: AppTheme.background,
+        body: Center(child: SpinKitPulse(color: AppTheme.textSecondary, size: 40)),
       );
     }
 
     if (_quizWords.isEmpty) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0A0A0A),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Text('択一クイズ', style: GoogleFonts.outfit()),
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Text(
-              '出題条件に該当する単語が見つかりませんでした。\n範囲設定を見直してください。',
-              style: GoogleFonts.outfit(color: AppTheme.textPrimary),
-              textAlign: TextAlign.center,
-            ),
-          ),
+        backgroundColor: AppTheme.background,
+        appBar: AppBar(title: const Text('Quiz Test')),
+        body: const Center(
+          child: Text('No words match your selected configuration.'),
         ),
       );
     }
@@ -276,27 +234,35 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
     final isEnToJa = widget.config.direction == LanguageDirection.enToJa;
     final questionText = isEnToJa ? targetWord.spelling : targetWord.meaningJa;
 
-    return KeyboardListener(
+    return Focus(
       focusNode: _keyboardFocusNode,
       autofocus: true,
-      onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
-          if (_hasAnswered) {
-            _nextQuestion();
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent && !_hasAnswered) {
+          int? selectIndex;
+          if (event.logicalKey == LogicalKeyboardKey.keyA || event.logicalKey == LogicalKeyboardKey.digit1) {
+            selectIndex = 0;
+          } else if (event.logicalKey == LogicalKeyboardKey.keyB || event.logicalKey == LogicalKeyboardKey.digit2) {
+            selectIndex = 1;
+          } else if (event.logicalKey == LogicalKeyboardKey.keyC || event.logicalKey == LogicalKeyboardKey.digit3) {
+            selectIndex = 2;
+          } else if (event.logicalKey == LogicalKeyboardKey.keyD || event.logicalKey == LogicalKeyboardKey.digit4) {
+            selectIndex = 3;
+          }
+
+          if (selectIndex != null && selectIndex < _currentOptions.length) {
+            _answer(_currentOptions[selectIndex]);
+            return KeyEventResult.handled;
           }
         }
+        return KeyEventResult.ignored;
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF0A0A0A),
+        backgroundColor: AppTheme.background,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Text(
-            'Q${_currentIndex + 1} / ${_quizWords.length}',
-            style: GoogleFonts.outfit(color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
-          ),
+          title: Text('QUIZ ASSESSMENT (${_currentIndex + 1}/${_quizWords.length})'),
           leading: IconButton(
-            icon: const Icon(Icons.close_rounded, color: AppTheme.textPrimary),
+            icon: const Icon(Icons.close_rounded),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -306,117 +272,111 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
             children: [
               LinearProgressIndicator(
                 value: (_currentIndex + 1) / _quizWords.length,
-                backgroundColor: Colors.white.withOpacity(AppTheme.borderSubtleOpacity),
+                backgroundColor: AppTheme.borderColor,
                 valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
                 minHeight: 2,
-                borderRadius: BorderRadius.zero,
               ),
-              const SizedBox(height: 48),
+              const Spacer(),
 
-              Expanded(
-                flex: 2,
-                child: Container(
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        questionText,
-                        style: GoogleFonts.outfit(
-                          fontSize: isEnToJa ? 48 : 36,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textPrimary,
-                          height: 1.1,
-                        ),
-                        textAlign: TextAlign.center,
+              // Question display
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      questionText,
+                      style: GoogleFonts.inter(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                        letterSpacing: -1.0,
                       ),
-                      if (isEnToJa) ...[
-                        const SizedBox(height: 16),
-                        IconButton(
-                          icon: const Icon(Icons.volume_up_rounded, size: 36, color: AppTheme.info),
-                          onPressed: () => _speak(targetWord.spelling),
-                          tooltip: '発音を聞く',
-                        ),
-                      ],
+                      textAlign: TextAlign.center,
+                    ),
+                    if (isEnToJa) ...[
+                      const SizedBox(height: 12),
+                      IconButton(
+                        icon: const Icon(Icons.volume_up_rounded, size: 24, color: AppTheme.textSecondary),
+                        onPressed: () => _speak(targetWord.spelling),
+                      ),
                     ],
-                  ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const Spacer(),
 
-              Expanded(
-                flex: 4,
-                child: Column(
-                  children: _currentOptions.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final option = entry.value;
-                    final isSelected = _selectedOption == option;
-                    final isCorrectOption = option == (isEnToJa ? targetWord.meaningJa : targetWord.spelling);
+              // Answer choices list table
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                child: Container(
+                  decoration: AppTheme.cardDecoration(),
+                  child: Column(
+                    children: _currentOptions.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final option = entry.value;
+                      final isSelected = _selectedOption == option;
+                      final isCorrectOption = option == (isEnToJa ? targetWord.meaningJa : targetWord.spelling);
 
-                    Color bgColor = Colors.transparent;
-                    Color textColor = AppTheme.textPrimary;
+                      final List<String> labels = ['A', 'B', 'C', 'D'];
+                      
+                      Color optionColor = AppTheme.textPrimary;
+                      FontWeight optionWeight = FontWeight.w500;
 
-                    if (_hasAnswered) {
-                      if (isCorrectOption) {
-                        bgColor = AppTheme.success;
-                        textColor = const Color(0xFF0A0A0A);
-                      } else if (isSelected) {
-                        bgColor = AppTheme.error;
-                        textColor = const Color(0xFF0A0A0A);
-                      } else {
-                        textColor = AppTheme.textSecondary;
+                      if (_hasAnswered) {
+                        if (isCorrectOption) {
+                          optionColor = AppTheme.success;
+                          optionWeight = FontWeight.bold;
+                        } else if (isSelected) {
+                          optionColor = AppTheme.error;
+                          optionWeight = FontWeight.bold;
+                        } else {
+                          optionColor = AppTheme.textSecondary;
+                        }
                       }
-                    }
 
-                    return Expanded(
-                      child: InkWell(
+                      return InkWell(
                         onTap: () => _answer(option),
                         child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                           decoration: BoxDecoration(
-                            color: bgColor,
-                            border: Border(
-                              top: BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity), width: 1),
-                              bottom: index == _currentOptions.length - 1 
-                                  ? BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity), width: 1)
-                                  : BorderSide.none,
-                            ),
+                            border: index < 3
+                                ? const Border(bottom: BorderSide(color: AppTheme.borderColor, width: 0.5))
+                                : null,
                           ),
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Text(
-                            option,
-                            style: GoogleFonts.outfit(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: textColor,
-                            ),
+                          child: Row(
+                            children: [
+                              Text(
+                                labels[index],
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? AppTheme.primary : AppTheme.textMuted,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  option,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: optionWeight,
+                                    color: optionColor,
+                                  ),
+                                ),
+                              ),
+                              if (_hasAnswered && isCorrectOption)
+                                const Icon(Icons.check_circle_outline_rounded, color: AppTheme.success, size: 16)
+                              else if (_hasAnswered && isSelected)
+                                const Icon(Icons.cancel_outlined, color: AppTheme.error, size: 16)
+                            ],
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
-
-              if (_hasAnswered)
-                InkWell(
-                  onTap: _nextQuestion,
-                  child: Container(
-                    height: 80,
-                    color: AppTheme.primary,
-                    alignment: Alignment.center,
-                    child: Text(
-                      _currentIndex + 1 == _quizWords.length ? 'FINISH' : 'NEXT',
-                      style: GoogleFonts.outfit(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                )
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -428,151 +388,109 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
     final allCorrect = _wrongWords.isEmpty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: AppTheme.background,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 48),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'SCORE',
-                style: GoogleFonts.outfit(
-                  fontSize: 24,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
+              Text(
+                'ASSESSMENT COMPLETE',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 4,
                   color: AppTheme.textSecondary,
+                  letterSpacing: 1.0,
                 ),
                 textAlign: TextAlign.center,
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                '$_score',
-                style: GoogleFonts.outfit(
-                  fontSize: 120,
-                  fontWeight: FontWeight.w900,
-                  height: 1.0,
+              const SizedBox(height: 8),
+              Text(
+                '$_score / ${_quizWords.length}',
+                style: GoogleFonts.inter(
+                  fontSize: 48,
+                  fontWeight: FontWeight.w800,
                   color: AppTheme.primary,
+                  letterSpacing: -1.0,
                 ),
                 textAlign: TextAlign.center,
               ),
-            ),
-            Text(
-              'OUT OF ${_quizWords.length}',
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
-                color: AppTheme.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 48),
-            
-            if (!allCorrect) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  'REVIEW',
-                  style: GoogleFonts.outfit(
+              const SizedBox(height: 32),
+              
+              if (!allCorrect) ...[
+                Text(
+                  'REVIEW WEAK WORDS',
+                  style: GoogleFonts.inter(
                     color: AppTheme.error,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 2,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
                   ),
-                  textAlign: TextAlign.start,
                 ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _wrongWords.length,
-                  itemBuilder: (context, index) {
-                    final word = _wrongWords[index];
-                    return Container(
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity), width: 1),
-                          bottom: index == _wrongWords.length - 1 
-                              ? BorderSide(color: Colors.white.withOpacity(AppTheme.borderSubtleOpacity), width: 1)
-                              : BorderSide.none,
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              word.spelling,
-                              style: GoogleFonts.outfit(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.textPrimary,
-                              ),
-                            ),
+                const SizedBox(height: 8),
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    decoration: AppTheme.cardDecoration(),
+                    child: ListView.builder(
+                      itemCount: _wrongWords.length,
+                      itemBuilder: (context, index) {
+                        final word = _wrongWords[index];
+                        return Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          decoration: BoxDecoration(
+                            border: index < _wrongWords.length - 1
+                                ? const Border(bottom: BorderSide(color: AppTheme.borderColor, width: 0.5))
+                                : null,
                           ),
-                          Expanded(
-                            child: Text(
-                              word.meaningJa,
-                              style: GoogleFonts.outfit(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
-                                color: AppTheme.textSecondary,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                word.spelling,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                               ),
-                              textAlign: TextAlign.right,
-                            ),
+                              Text(
+                                word.meaningJa,
+                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  },
+                        );
+                      },
+                    ),
+                  ),
                 ),
-              ),
-            ] else ...[
-              Expanded(
-                child: Center(
+              ] else ...[
+                const Spacer(),
+                const Center(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.bolt_rounded, color: AppTheme.success, size: 80),
-                      const SizedBox(height: 16),
+                      Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 48),
+                      SizedBox(height: 12),
                       Text(
-                        'PERFECT',
-                        style: GoogleFonts.outfit(
+                        'PERFECT SCORE',
+                        style: TextStyle(
                           color: AppTheme.success,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 4,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.0,
                         ),
                       ),
                     ],
                   ),
                 ),
-              )
-            ],
-            
-            InkWell(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                height: 80,
-                color: AppTheme.primary,
-                alignment: Alignment.center,
-                child: Text(
-                  'CLOSE',
-                  style: GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                    color: Colors.white,
-                  ),
-                ),
+                const Spacer(),
+              ],
+              const Spacer(),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('DONE'),
               ),
-            )
-          ],
+            ],
+          ),
         ),
       ),
     );

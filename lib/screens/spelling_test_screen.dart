@@ -32,7 +32,7 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
   bool _showHint = false;
 
   int _score = 0;
-  List<Word> _wrongWords = [];
+  final List<Word> _wrongWords = [];
 
   final FlutterTts _flutterTts = FlutterTts();
 
@@ -160,18 +160,15 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
       _hasChecked = true;
       if (isCorrect) {
         _score++;
-        // Update SRS status under SM-2 (1: Mastered)
         ref.read(wordListProvider.notifier).updateWordStatus(targetWord.id, 1);
       } else {
         _wrongWords.add(targetWord);
-        // Update SRS status under SM-2 (2: Weak)
         ref.read(wordListProvider.notifier).updateWordStatus(targetWord.id, 2);
       }
     });
 
     _speak(targetWord.spelling);
 
-    // Auto navigate after 2s
     _transitionTimer = Timer(const Duration(milliseconds: 2000), () {
       if (mounted) {
         _nextQuestion();
@@ -198,16 +195,19 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: AppTheme.background,
-        body: Center(child: SpinKitPulse(color: AppTheme.textSecondary, size: 40)),
+        body: Center(child: SpinKitPulse(color: AppTheme.primary, size: 40)),
       );
     }
 
     if (_testWords.isEmpty) {
       return Scaffold(
         backgroundColor: AppTheme.background,
-        appBar: AppBar(title: const Text('Spelling Test')),
-        body: const Center(
-          child: Text('No words match your selected configuration.'),
+        appBar: AppBar(title: const Text('SPELLING ASSESSMENT')),
+        body: Center(
+          child: Text(
+            'STATUS: NO WORDS MATCHED CONFIGURATION.',
+            style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary),
+          ),
         ),
       );
     }
@@ -235,9 +235,12 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.background,
         appBar: AppBar(
-          title: Text('SPELLING ASSESSMENT (${_currentIndex + 1}/${_testWords.length})'),
+          title: Text(
+            'SPELLING_DICTATION // MODULE_${_currentIndex + 1}_OF_${_testWords.length}',
+            style: GoogleFonts.shareTechMono(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+          ),
           leading: IconButton(
-            icon: const Icon(Icons.close_rounded),
+            icon: const Icon(Icons.close_rounded, size: 16),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -245,32 +248,53 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              LinearProgressIndicator(
-                value: (_currentIndex + 1) / _testWords.length,
-                backgroundColor: AppTheme.borderColor,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                minHeight: 2,
+              // LED Progress bar segments
+              Row(
+                children: List.generate(20, (i) {
+                  final progress = (_currentIndex + 1) / _testWords.length;
+                  final isLit = (i / 20.0) < progress;
+                  return Expanded(
+                    child: Container(
+                      height: 4,
+                      margin: const EdgeInsets.only(right: 1.0),
+                      decoration: BoxDecoration(
+                        color: isLit ? AppTheme.primary : AppTheme.borderColor,
+                        boxShadow: isLit
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.primary.withOpacity(0.5),
+                                  blurRadius: 2,
+                                )
+                              ]
+                            : null,
+                      ),
+                    ),
+                  );
+                }),
               ),
               const Spacer(),
 
-              // Text Question / Answer Feedback
+              // VFD Glass display question
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Center(
+                child: Container(
+                  height: 180,
+                  decoration: AppTheme.displayDecoration(glow: true),
+                  padding: const EdgeInsets.all(24.0),
+                  alignment: Alignment.center,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         targetWord.meaningJa,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.shareTechMono(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
-                          letterSpacing: -0.5,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 20),
         
                       if (_showHint || _hasChecked)
                         Center(
@@ -278,9 +302,9 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                _hasChecked ? targetWord.spelling : hintText,
-                                style: GoogleFonts.inter(
-                                  fontSize: 24,
+                                (_hasChecked ? targetWord.spelling : hintText).toUpperCase(),
+                                style: GoogleFonts.spaceMono(
+                                  fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 2,
                                   color: _hasChecked
@@ -291,7 +315,7 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
                               if (_hasChecked) ...[
                                 const SizedBox(width: 8),
                                 IconButton(
-                                  icon: const Icon(Icons.volume_up_rounded, size: 20, color: AppTheme.textSecondary),
+                                  icon: const Icon(Icons.volume_up_rounded, size: 16, color: AppTheme.textSecondary),
                                   onPressed: () => _speak(targetWord.spelling),
                                 ),
                               ],
@@ -299,18 +323,25 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
                           ),
                         )
                       else
-                        OutlinedButton.icon(
+                        TactileButton(
+                          width: 140,
+                          height: 32,
                           onPressed: () {
                             setState(() {
                               _showHint = true;
                             });
                             _speak(targetWord.spelling);
                           },
-                          icon: const Icon(Icons.help_outline_rounded, size: 14),
-                          label: const Text('Show First Letter', style: TextStyle(fontSize: 12)),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(120, 32),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.help_outline_rounded, size: 12, color: AppTheme.textPrimary),
+                              const SizedBox(width: 6),
+                              Text(
+                                'SHOW FIRST LETTER',
+                                style: GoogleFonts.shareTechMono(fontSize: 10, color: AppTheme.textPrimary),
+                              ),
+                            ],
                           ),
                         ),
                     ],
@@ -319,30 +350,59 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
               ),
               const Spacer(),
         
-              // Sleek outline input box
+              // Green prompt terminal text field input box
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                child: TextField(
-                  controller: _inputController,
-                  focusNode: _focusNode,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _checkAnswer(),
-                  enabled: !_hasChecked,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
-                  textAlign: TextAlign.center,
-                  decoration: const InputDecoration(
-                    hintText: 'Type spelling here...',
-                    contentPadding: EdgeInsets.symmetric(vertical: 16),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _inputController,
+                      focusNode: _focusNode,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _checkAnswer(),
+                      enabled: !_hasChecked,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      style: GoogleFonts.spaceMono(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: _hasChecked 
+                            ? (_isCorrect ? AppTheme.success : AppTheme.error)
+                            : AppTheme.primary,
+                      ),
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        prefixText: 'SYS_IN > ',
+                        prefixStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 13),
+                        hintText: 'TYPE SPELLING HERE...',
+                        hintStyle: GoogleFonts.shareTechMono(color: AppTheme.textMuted, fontSize: 13),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TactileButton(
+                      height: 48,
+                      onPressed: _hasChecked ? _nextQuestion : _checkAnswer,
+                      color: _hasChecked 
+                          ? (_isCorrect ? AppTheme.success : AppTheme.error)
+                          : AppTheme.primary,
+                      ledColor: Colors.white,
+                      isLedOn: true,
+                      child: Text(
+                        _hasChecked ? 'NEXT CHANNEL [Enter]' : 'EXECUTE INPUT [Enter]',
+                        style: GoogleFonts.shareTechMono(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.displayBg,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
             ],
           ),
         ),
@@ -363,8 +423,8 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
             children: [
               const Spacer(),
               Text(
-                'SPELLING COMPLETE',
-                style: GoogleFonts.inter(
+                'SPELLING COMPLETE // OUTCOME',
+                style: GoogleFonts.shareTechMono(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textSecondary,
@@ -374,21 +434,21 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '$_score / ${_testWords.length}',
-                style: GoogleFonts.inter(
-                  fontSize: 48,
-                  fontWeight: FontWeight.w800,
+                'SCORE: ${_score.toString().padLeft(2, '0')} / ${_testWords.length.toString().padLeft(2, '0')}',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
                   color: AppTheme.primary,
-                  letterSpacing: -1.0,
+                  letterSpacing: 1.0,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               
               if (!allCorrect) ...[
                 Text(
-                  'WORDS TO REVIEW',
-                  style: GoogleFonts.inter(
+                  '// WEAK CHANNELS LOGGED:',
+                  style: GoogleFonts.shareTechMono(
                     color: AppTheme.error,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -399,28 +459,26 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
                 Expanded(
                   flex: 3,
                   child: Container(
-                    decoration: AppTheme.cardDecoration(),
+                    decoration: AppTheme.displayDecoration(glow: false),
                     child: ListView.builder(
                       itemCount: _wrongWords.length,
                       itemBuilder: (context, index) {
                         final word = _wrongWords[index];
                         return Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                          decoration: BoxDecoration(
-                            border: index < _wrongWords.length - 1
-                                ? const Border(bottom: BorderSide(color: AppTheme.borderColor, width: 0.5))
-                                : null,
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                          decoration: const BoxDecoration(
+                            border: Border(bottom: BorderSide(color: AppTheme.borderColor, width: 0.5)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                word.spelling,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                                word.spelling.toUpperCase(),
+                                style: GoogleFonts.spaceMono(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                               ),
                               Text(
                                 word.meaningJa,
-                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                                style: GoogleFonts.shareTechMono(fontSize: 11, color: AppTheme.textSecondary),
                               ),
                             ],
                           ),
@@ -431,18 +489,31 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
                 ),
               ] else ...[
                 const Spacer(),
-                const Center(
+                Center(
                   child: Column(
                     children: [
-                      Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 48),
-                      SizedBox(height: 12),
-                      Text(
-                        'ALL CORRECT',
-                        style: TextStyle(
+                      Container(
+                        width: 14,
+                        height: 14,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
                           color: AppTheme.success,
-                          fontSize: 16,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.success,
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            )
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'CALIBRATION PERFECT // ZERO_ERRORS',
+                        style: GoogleFonts.shareTechMono(
+                          color: AppTheme.success,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 1.0,
                         ),
                       ),
                     ],
@@ -451,9 +522,17 @@ class _SpellingTestScreenState extends ConsumerState<SpellingTestScreen> {
                 const Spacer(),
               ],
               const Spacer(),
-              ElevatedButton(
+              TactileButton(
+                height: 46,
                 onPressed: () => Navigator.pop(context),
-                child: const Text('DONE'),
+                color: AppTheme.primary,
+                child: Text(
+                  'DISMISS',
+                  style: GoogleFonts.shareTechMono(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.displayBg,
+                  ),
+                ),
               ),
             ],
           ),

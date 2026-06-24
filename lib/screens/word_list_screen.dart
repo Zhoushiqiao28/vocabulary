@@ -44,7 +44,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
     await _flutterTts.speak(text);
   }
 
-  // Add / Edit Dialog
+  // Add / Edit Dialog (styled as hardware config panel)
   void _showWordFormDialog({Word? word}) {
     final isEdit = word != null;
     final spellingController = TextEditingController(text: word?.spelling ?? '');
@@ -55,14 +55,14 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppTheme.elevated,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            side: const BorderSide(color: AppTheme.borderColor),
+          backgroundColor: AppTheme.surface,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+            side: BorderSide(color: AppTheme.borderColor),
           ),
           title: Text(
-            isEdit ? 'Edit Vocabulary' : 'New Vocabulary',
-            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary),
+            isEdit ? 'EDIT_WORD // PARAMETER_TUNING' : 'NEW_WORD // DATABASE_REGISTER',
+            style: GoogleFonts.shareTechMono(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primary),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -71,36 +71,35 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                 TextField(
                   controller: spellingController,
                   enabled: !isEdit,
-                  style: const TextStyle(fontSize: 13),
-                  decoration: const InputDecoration(
-                    labelText: 'Spelling (English)',
-                  ),
+                  style: GoogleFonts.shareTechMono(fontSize: 13),
+                  decoration: _inputDecoration('SPELLING (ENGLISH)'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: meaningController,
-                  style: const TextStyle(fontSize: 13),
-                  decoration: const InputDecoration(
-                    labelText: 'Meaning (Japanese)',
-                  ),
+                  style: GoogleFonts.shareTechMono(fontSize: 13),
+                  decoration: _inputDecoration('MEANING (JAPANESE)'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: nuanceController,
-                  style: const TextStyle(fontSize: 13),
-                  decoration: const InputDecoration(
-                    labelText: 'Core Nuance / Image (Optional)',
-                  ),
+                  style: GoogleFonts.shareTechMono(fontSize: 13),
+                  decoration: _inputDecoration('NUANCE (OPTIONAL)'),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(
+            TactileButton(
+              width: 80,
+              height: 34,
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              child: Text('CANCEL', style: GoogleFonts.shareTechMono(fontSize: 11)),
             ),
-            ElevatedButton(
+            const SizedBox(width: 8),
+            TactileButton(
+              width: 80,
+              height: 34,
               onPressed: () {
                 final spelling = spellingController.text.trim();
                 final meaning = meaningController.text.trim();
@@ -108,7 +107,12 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
 
                 if (spelling.isEmpty || meaning.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill required fields.')),
+                    SnackBar(
+                      content: Text(
+                        'ERROR: REQUIRED FIELDS EMPTY.',
+                        style: GoogleFonts.shareTechMono(),
+                      ),
+                    ),
                   );
                   return;
                 }
@@ -122,10 +126,11 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
 
                 Navigator.pop(context);
               },
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(80, 36),
+              color: AppTheme.primary,
+              child: Text(
+                isEdit ? 'SAVE' : 'ADD',
+                style: GoogleFonts.shareTechMono(fontSize: 11, color: AppTheme.displayBg, fontWeight: FontWeight.bold),
               ),
-              child: Text(isEdit ? 'Save' : 'Add'),
             ),
           ],
         );
@@ -133,7 +138,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
     );
   }
 
-  // Scanner Import Modal
+  // Scanner Import Modal (styled as OCR text console)
   void _showImportTextSheet() {
     final textController = TextEditingController();
     showModalBottomSheet(
@@ -144,41 +149,45 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
         return Container(
           height: MediaQuery.of(context).size.height * 0.7,
           decoration: const BoxDecoration(
-            color: AppTheme.elevated,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+            color: AppTheme.surface,
+            border: Border(top: BorderSide(color: AppTheme.borderColor)),
           ),
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'TEXT SCANNER / OCR SIMULATOR',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
+                'OCR_TEXT_SCANNER // TELEMETRY_IMPORT',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.primary,
                   letterSpacing: 0.8,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Paste English text from textbooks or articles. VocaBA will scan the content, filter unique words, and register them into your dictionary database.',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+              Text(
+                'PASTE TEXT TO PARSE AND INTEGRATE UNIQUE ENGLISH VOCABULARY TERMS.',
+                style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 10),
               ),
               const SizedBox(height: 16),
               Expanded(
                 child: TextField(
                   controller: textController,
                   maxLines: 12,
-                  style: const TextStyle(fontSize: 13),
-                  decoration: const InputDecoration(
-                    hintText: 'Paste paragraphs or scanned OCR text here...',
-                    alignLabelWithHint: true,
+                  style: GoogleFonts.spaceMono(fontSize: 12, color: AppTheme.success),
+                  decoration: InputDecoration(
+                    prefixText: 'SCANNER > ',
+                    prefixStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 13),
+                    hintText: 'PASTE SCAN DATA HERE...',
+                    hintStyle: GoogleFonts.shareTechMono(color: AppTheme.textMuted, fontSize: 13),
+                    fillColor: AppTheme.displayBg,
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
+              TactileButton(
+                height: 44,
                 onPressed: () async {
                   final text = textController.text.trim();
                   if (text.isEmpty) return;
@@ -193,7 +202,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     if (w.length > 3) {
                       scanned.add({
                         'spelling': w,
-                        'meaning_ja': 'Scanned word (Japanese translation pending)',
+                        'meaning_ja': 'PENDING_TRANSLATION',
                       });
                     }
                   }
@@ -204,17 +213,29 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Successfully imported ${scanned.length} words from scan.'),
+                        content: Text(
+                          'LOG: IMPORTED ${scanned.length} WORDS SUCCESSFULLY.',
+                          style: GoogleFonts.shareTechMono(),
+                        ),
                         backgroundColor: AppTheme.success,
                       ),
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('No valid words found in the text.')),
+                      SnackBar(
+                        content: Text(
+                          'ERROR: NO VALID WORDS FOUND.',
+                          style: GoogleFonts.shareTechMono(),
+                        ),
+                      ),
                     );
                   }
                 },
-                child: const Text('SCAN & IMPORT TEXT'),
+                color: AppTheme.primary,
+                child: Text(
+                  'SCAN & IMPORT DATA',
+                  style: GoogleFonts.shareTechMono(fontWeight: FontWeight.bold, color: AppTheme.displayBg),
+                ),
               )
             ],
           ),
@@ -228,27 +249,39 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppTheme.elevated,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            side: const BorderSide(color: AppTheme.borderColor),
+          backgroundColor: AppTheme.surface,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+            side: BorderSide(color: AppTheme.borderColor),
           ),
-          title: const Text('Delete word', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-          content: Text('Remove "${word.spelling}" from your dictionary?', style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+          title: Text(
+            'DELETE_WORD // DESTRUCTIVE_ACTION',
+            style: GoogleFonts.shareTechMono(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.error),
+          ),
+          content: Text(
+            'REMOVE "${word.spelling.toUpperCase()}" PERMANENTLY FROM CHASSIS MEMORY?',
+            style: GoogleFonts.shareTechMono(fontSize: 11, color: AppTheme.textSecondary),
+          ),
           actions: [
-            TextButton(
+            TactileButton(
+              width: 80,
+              height: 34,
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              child: Text('CANCEL', style: GoogleFonts.shareTechMono(fontSize: 11)),
             ),
-            ElevatedButton(
+            const SizedBox(width: 8),
+            TactileButton(
+              width: 80,
+              height: 34,
               onPressed: () {
                 ref.read(wordListProvider.notifier).deleteWord(word.id);
                 Navigator.pop(context);
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.error,
+              color: AppTheme.error,
+              child: Text(
+                'DELETE',
+                style: GoogleFonts.shareTechMono(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
               ),
-              child: const Text('Delete'),
             ),
           ],
         );
@@ -289,13 +322,13 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
         title: const Text('WORD LIBRARY DIRECTORY'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.document_scanner_rounded),
-            tooltip: 'Import from Scanner/Text',
+            icon: const Icon(Icons.document_scanner_rounded, size: 16),
+            tooltip: 'Import Scan',
             onPressed: _showImportTextSheet,
           ),
           IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add new word',
+            icon: const Icon(Icons.add, size: 18),
+            tooltip: 'Add Term',
             onPressed: () => _showWordFormDialog(),
           ),
         ],
@@ -310,18 +343,20 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                 children: [
                   TextField(
                     controller: _searchController,
-                    style: const TextStyle(fontSize: 13),
+                    style: GoogleFonts.shareTechMono(fontSize: 13),
                     onChanged: (value) {
                       setState(() {
                         _searchQuery = value;
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: 'Search spelling or translation...',
-                      prefixIcon: const Icon(Icons.search, size: 16),
+                      prefixText: 'SEARCH > ',
+                      prefixStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 13),
+                      hintText: 'SEARCH SPELLING OR TRANSLATION...',
+                      hintStyle: GoogleFonts.shareTechMono(color: AppTheme.textMuted, fontSize: 13),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear, size: 16),
+                              icon: const Icon(Icons.clear, size: 14),
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() {
@@ -333,60 +368,62 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Filter horizontal list
+                  
+                  // Filter horizontal row with TactileButtons
                   SizedBox(
                     height: 28,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        FilterChip(
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.star, color: _onlyFavorites ? AppTheme.warning : AppTheme.textSecondary, size: 12),
-                              const SizedBox(width: 4),
-                              const Text('Favorites', style: TextStyle(fontSize: 10)),
-                            ],
+                        Container(
+                          width: 110,
+                          margin: const EdgeInsets.only(right: 6),
+                          child: TactileButton(
+                            height: 28,
+                            onPressed: () => setState(() => _onlyFavorites = !_onlyFavorites),
+                            color: _onlyFavorites ? AppTheme.hover : AppTheme.surface,
+                            ledColor: AppTheme.warning,
+                            isLedOn: _onlyFavorites,
+                            child: Text('FAVORITES', style: GoogleFonts.shareTechMono(fontSize: 10)),
                           ),
-                          selected: _onlyFavorites,
-                          onSelected: (selected) => setState(() => _onlyFavorites = selected),
-                          backgroundColor: Colors.transparent,
                         ),
-                        const SizedBox(width: 8),
-                        FilterChip(
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.person, color: _onlyUserWords ? AppTheme.info : AppTheme.textSecondary, size: 12),
-                              const SizedBox(width: 4),
-                              const Text('Custom', style: TextStyle(fontSize: 10)),
-                            ],
+                        Container(
+                          width: 100,
+                          margin: const EdgeInsets.only(right: 6),
+                          child: TactileButton(
+                            height: 28,
+                            onPressed: () => setState(() => _onlyUserWords = !_onlyUserWords),
+                            color: _onlyUserWords ? AppTheme.hover : AppTheme.surface,
+                            ledColor: AppTheme.info,
+                            isLedOn: _onlyUserWords,
+                            child: Text('CUSTOM_ONLY', style: GoogleFonts.shareTechMono(fontSize: 10)),
                           ),
-                          selected: _onlyUserWords,
-                          onSelected: (selected) => setState(() => _onlyUserWords = selected),
-                          backgroundColor: Colors.transparent,
                         ),
                         const SizedBox(width: 8),
                         ...[
-                          {'label': 'All', 'val': -1},
-                          {'label': 'New', 'val': 0},
-                          {'label': 'Mastered', 'val': 1},
-                          {'label': 'Weak', 'val': 2},
+                          {'label': 'ALL', 'val': -1, 'led': AppTheme.primary},
+                          {'label': 'NEW', 'val': 0, 'led': AppTheme.textSecondary},
+                          {'label': 'MASTERED', 'val': 1, 'led': AppTheme.success},
+                          {'label': 'WEAK', 'val': 2, 'led': AppTheme.error},
                         ].map((filter) {
                           final isSelected = _selectedStatusFilter == filter['val'];
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: ChoiceChip(
-                              label: Text(filter['label'] as String, style: const TextStyle(fontSize: 10)),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  setState(() {
-                                    _selectedStatusFilter = filter['val'] as int;
-                                  });
-                                }
+                          return Container(
+                            width: 90,
+                            margin: const EdgeInsets.only(right: 6),
+                            child: TactileButton(
+                              height: 28,
+                              onPressed: () {
+                                setState(() {
+                                  _selectedStatusFilter = filter['val'] as int;
+                                });
                               },
-                              backgroundColor: Colors.transparent,
+                              color: isSelected ? AppTheme.hover : AppTheme.surface,
+                              ledColor: filter['led'] as Color,
+                              isLedOn: isSelected,
+                              child: Text(
+                                filter['label'] as String,
+                                style: GoogleFonts.shareTechMono(fontSize: 10),
+                              ),
                             ),
                           );
                         }),
@@ -398,38 +435,38 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
             ),
             const Divider(height: 1, thickness: 1),
 
-            // High-density Data Table header
+            // High-density Data Table header (measuring log style)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-              color: AppTheme.surface.withOpacity(0.4),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              color: AppTheme.displayBg,
               child: Row(
                 children: [
                   Expanded(
                     flex: 3,
                     child: Text(
-                      'SPELLING',
-                      style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                      'INDEX/SPELLING',
+                      style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                     ),
                   ),
                   Expanded(
                     flex: 3,
                     child: Text(
-                      'TRANSLATION',
-                      style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                      'TRANSLATION_LOG',
+                      style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                     ),
                   ),
                   Expanded(
                     flex: 2,
                     child: Text(
-                      'STATUS',
-                      style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                      'SRS_STATE',
+                      style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                     ),
                   ),
                   Expanded(
                     flex: 2,
                     child: Text(
-                      'ACTIONS',
-                      style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                      'OPERATE',
+                      style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                     ),
                   ),
                 ],
@@ -444,9 +481,12 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.folder_open_rounded, color: AppTheme.textMuted, size: 48),
+                          const Icon(Icons.folder_open_rounded, color: AppTheme.textMuted, size: 36),
                           const SizedBox(height: 12),
-                          const Text('No records match query', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                          Text(
+                            'LOG: NO RECORDS MATCH QUERY.',
+                            style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 11),
+                          ),
                         ],
                       ),
                     )
@@ -466,17 +506,17 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
 
   Widget _buildWordRow(Word word) {
     Color statusColor = AppTheme.textSecondary;
-    String statusText = 'New';
+    String statusText = 'NEW';
     if (word.status == 1) {
       statusColor = AppTheme.success;
-      statusText = 'Mastered';
+      statusText = 'MASTER';
     } else if (word.status == 2) {
       statusColor = AppTheme.error;
-      statusText = 'Weak';
+      statusText = 'WEAK';
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(color: AppTheme.borderColor, width: 0.5),
@@ -484,7 +524,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
       ),
       child: Row(
         children: [
-          // Spelling + TTS icon
+          // Spelling + play audio button
           Expanded(
             flex: 3,
             child: Row(
@@ -492,9 +532,9 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
               children: [
                 Flexible(
                   child: Text(
-                    word.spelling,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
+                    '#${word.id.toString().padLeft(3, '0')} ${word.spelling.toUpperCase()}',
+                    style: GoogleFonts.shareTechMono(
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.textPrimary,
                     ),
@@ -503,7 +543,7 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                 ),
                 const SizedBox(width: 4),
                 IconButton(
-                  icon: const Icon(Icons.volume_up_rounded, size: 14, color: AppTheme.textSecondary),
+                  icon: const Icon(Icons.volume_up_rounded, size: 12, color: AppTheme.textSecondary),
                   onPressed: () => _speak(word.spelling),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -511,14 +551,14 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                 if (word.isSystem) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0.5),
                     decoration: BoxDecoration(
                       color: AppTheme.borderColor,
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(1),
                     ),
-                    child: const Text(
-                      'Sys',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 8, fontWeight: FontWeight.bold),
+                    child: Text(
+                      'SYS',
+                      style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 8, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ]
@@ -531,12 +571,12 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
             flex: 3,
             child: Text(
               word.meaningJa,
-              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              style: GoogleFonts.shareTechMono(fontSize: 12, color: AppTheme.textSecondary),
               overflow: TextOverflow.ellipsis,
             ),
           ),
 
-          // Status trigger chip
+          // Status state (interactable text button)
           Expanded(
             flex: 2,
             child: InkWell(
@@ -544,13 +584,29 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
                 final nextStatus = (word.status + 1) % 3;
                 ref.read(wordListProvider.notifier).updateWordStatus(word.id, nextStatus);
               },
-              child: Text(
-                statusText,
-                style: TextStyle(
-                  color: statusColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 4,
+                    margin: const EdgeInsets.only(right: 6.0),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: statusColor,
+                      boxShadow: [
+                        BoxShadow(color: statusColor, blurRadius: 2),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    statusText,
+                    style: GoogleFonts.shareTechMono(
+                      color: statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -563,22 +619,31 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
               children: [
                 GestureDetector(
                   onTap: () => ref.read(wordListProvider.notifier).toggleFavorite(word.id),
-                  child: Icon(
-                    word.isFavorite ? Icons.star : Icons.star_border,
-                    color: word.isFavorite ? AppTheme.warning : AppTheme.textMuted,
-                    size: 16,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: word.isFavorite ? AppTheme.warning : AppTheme.warning.withOpacity(0.1),
+                      border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                      boxShadow: word.isFavorite
+                          ? [
+                              BoxShadow(color: AppTheme.warning.withOpacity(0.6), blurRadius: 3),
+                            ]
+                          : null,
+                    ),
                   ),
                 ),
                 if (!word.isSystem) ...[
                   const SizedBox(width: 12),
                   GestureDetector(
                     onTap: () => _showWordFormDialog(word: word),
-                    child: const Icon(Icons.edit_rounded, color: AppTheme.textSecondary, size: 14),
+                    child: const Icon(Icons.edit_rounded, color: AppTheme.textSecondary, size: 12),
                   ),
                   const SizedBox(width: 12),
                   GestureDetector(
                     onTap: () => _confirmDelete(word),
-                    child: const Icon(Icons.delete_rounded, color: AppTheme.error, size: 14),
+                    child: const Icon(Icons.delete_rounded, color: AppTheme.error, size: 12),
                   ),
                 ]
               ],
@@ -586,6 +651,18 @@ class _WordListScreenState extends ConsumerState<WordListScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 10),
+      filled: true,
+      fillColor: AppTheme.displayBg,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: const BorderSide(color: AppTheme.borderColor)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: const BorderSide(color: AppTheme.borderColor)),
     );
   }
 }

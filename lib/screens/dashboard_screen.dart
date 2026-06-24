@@ -16,7 +16,6 @@ import 'word_list_screen.dart';
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
-  // Start daily session pre-configured with DUE words
   void _startDueReview(BuildContext context, int totalWords) {
     final config = LearningConfig(
       direction: LanguageDirection.enToJa,
@@ -29,7 +28,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // Open custom learning configuration
   void _startLearningConfig(
     BuildContext context,
     int totalWordsCount, {
@@ -68,7 +66,7 @@ class DashboardScreen extends ConsumerWidget {
       return d.year == now.year && d.month == now.month && d.day == now.day;
     }).length;
 
-    // Count due words (unlearned OR nextReviewAt <= now)
+    // Count due words
     final dueWords = words.where((w) {
       return w.nextReviewAt == null || w.nextReviewAt!.isBefore(now);
     }).toList();
@@ -78,14 +76,14 @@ class DashboardScreen extends ConsumerWidget {
     final weakCount = words.where((w) => w.status == 2).length;
     final unlearnedCount = words.where((w) => w.status == 0).length;
 
-    // Past 7 Days Sparkline Data
-    final List<double> chartData = List.generate(7, (i) {
+    // Past 7 Days Sparkline Data -> mapped to VFD values
+    final List<int> chartData = List.generate(7, (i) {
       final day = now.subtract(Duration(days: 6 - i));
       return words.where((w) {
         if (w.reviewedAt == null) return false;
         final d = w.reviewedAt!;
         return d.year == day.year && d.month == day.month && d.day == day.day;
-      }).length.toDouble();
+      }).length;
     });
 
     final screenWidth = MediaQuery.of(context).size.width;
@@ -113,31 +111,36 @@ class DashboardScreen extends ConsumerWidget {
     int mastered,
     int weak,
     int unlearned,
-    List<double> chartData,
+    List<int> chartData,
   ) {
     return Column(
       children: [
-        // Mobile Header
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+        // Mobile Header with slit divider
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AppTheme.borderColor, width: 1.0),
+            ),
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'vocaba',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textPrimary,
-                  letterSpacing: -0.5,
+                'VOCABA // CONSOLE_v6.0',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primary,
+                  letterSpacing: 1.0,
                 ),
               ),
               Row(
                 children: [
-                  _buildStreakChip(profile.streakDays),
+                  _buildStreakLeds(profile.streakDays),
                   const SizedBox(width: 12),
                   IconButton(
-                    icon: const Icon(Icons.settings_rounded, size: 18),
+                    icon: const Icon(Icons.settings_rounded, size: 16, color: AppTheme.textSecondary),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (context) => const SettingsScreen()),
                     ),
@@ -147,34 +150,33 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
-        const Divider(height: 1, thickness: 1),
 
         // Scrollable Body
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+            padding: const EdgeInsets.all(16.0),
             children: [
               _buildGreeting(profile.name, dueCount),
               const SizedBox(height: 16),
               _buildSessionControlPanel(context, dueCount, todayReviewed, profile.dailyTarget, words.length),
               const SizedBox(height: 24),
               
-              _buildSectionHeader('Weekly Activity'),
+              _buildSectionHeader('VFD SPECTRAM MONITOR (ACTIVITY)'),
               const SizedBox(height: 8),
-              SizedBox(height: 60, child: _buildSparklineCard(chartData)),
+              _buildSpectrumCard(chartData),
               const SizedBox(height: 24),
 
-              _buildSectionHeader('Curriculum'),
+              _buildSectionHeader('SYSTEM CURRICULUM'),
               const SizedBox(height: 8),
               _buildModesPanel(context, words.length),
               const SizedBox(height: 24),
 
-              _buildSectionHeader('Vocabulary Status'),
+              _buildSectionHeader('VOCABULARY COUNTERS'),
               const SizedBox(height: 8),
               _buildStatsRow(mastered, weak, unlearned),
               const SizedBox(height: 24),
 
-              _buildSectionHeader('Recently Reviewed'),
+              _buildSectionHeader('SYSTEM MEASUREMENT LOG'),
               const SizedBox(height: 8),
               _buildRecentWordsTable(context, words),
               const SizedBox(height: 32),
@@ -197,15 +199,16 @@ class DashboardScreen extends ConsumerWidget {
     int mastered,
     int weak,
     int unlearned,
-    List<double> chartData,
+    List<int> chartData,
   ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Left Column: Persistent Sidebar (Width: 260px)
+        // Left Column: Physical Control Sidebar (Width: 260px)
         Container(
           width: 250,
           decoration: const BoxDecoration(
+            color: AppTheme.surface,
             border: Border(
               right: BorderSide(color: AppTheme.borderColor, width: 1.0),
             ),
@@ -215,91 +218,91 @@ class DashboardScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'vocaba',
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textPrimary,
-                  letterSpacing: -0.6,
+                'VOCABA // CONSOLE_v6.0',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primary,
+                  letterSpacing: 0.5,
                 ),
               ),
               const SizedBox(height: 24),
               
-              // Sidebar Navigation items
-              _buildSidebarItem(context, Icons.dashboard_outlined, 'Dashboard', null),
-              _buildSidebarItem(context, Icons.menu_book_rounded, 'Word Library', () {
+              // Sidebar Navigation items (styled like toggle buttons)
+              _buildSidebarItem(context, Icons.dashboard_outlined, 'DASHBOARD', null),
+              _buildSidebarItem(context, Icons.menu_book_rounded, 'LIBRARY_LOG', () {
                 Navigator.of(context).push(MaterialPageRoute(builder: (context) => const WordListScreen()));
               }),
-              _buildSidebarItem(context, Icons.headset_mic_rounded, 'AI Radio Chat', () {
+              _buildSidebarItem(context, Icons.headset_mic_rounded, 'RADIO_CHAT', () {
                 Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ChatTestScreen()));
               }),
-              _buildSidebarItem(context, Icons.settings_rounded, 'Settings', () {
+              _buildSidebarItem(context, Icons.settings_rounded, 'SETTINGS', () {
                 Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
               }),
               
               const Spacer(),
               
-              // Weekly Sparkline In Sidebar
+              // VFD Sparkline In Sidebar
               Text(
-                'WEEKLY ACTIVITY',
-                style: GoogleFonts.inter(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
+                'VFD ACTIVITY SPECTRUM',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
                   color: AppTheme.textSecondary,
                   letterSpacing: 0.8,
                 ),
               ),
               const SizedBox(height: 8),
-              SizedBox(height: 60, child: _buildSparklineCard(chartData)),
-              const SizedBox(height: 24),
+              _buildSpectrumCard(chartData),
+              const SizedBox(height: 16),
 
-              // Calendar Heatmap trigger
-              OutlinedButton.icon(
+              // Calendar Heatmap trigger (styled like a physical chassis socket button)
+              TactileButton(
+                height: 34,
                 onPressed: () {
                   showDialog(
                     context: context,
                     builder: (context) => const LearningCalendarDialog(),
                   );
                 },
-                icon: const Icon(Icons.calendar_today_rounded, size: 12),
-                label: const Text('Learning Calendar', style: TextStyle(fontSize: 11)),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 32),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.calendar_today_rounded, size: 12, color: AppTheme.textPrimary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'MATRIX LED CALENDAR',
+                      style: GoogleFonts.shareTechMono(fontSize: 11, color: AppTheme.textPrimary),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
 
               // Profile / Streak at bottom
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          profile.name,
-                          style: const TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          profile.interests.isNotEmpty ? profile.interests.first : 'Vocabulary Builder',
-                          style: const TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 10,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+              Container(
+                padding: const EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color: AppTheme.displayBg,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  border: Border.all(color: AppTheme.borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'USER: ${profile.name.toUpperCase()}',
+                      style: GoogleFonts.shareTechMono(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  _buildStreakChip(profile.streakDays),
-                ],
+                    const SizedBox(height: 6),
+                    _buildStreakLeds(profile.streakDays),
+                  ],
+                ),
               )
             ],
           ),
@@ -308,16 +311,16 @@ class DashboardScreen extends ConsumerWidget {
         // Right Column: Main Workspace Panel
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32.0),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildGreeting(profile.name, dueCount),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // Main Session CTA Banner
                 _buildSessionControlPanel(context, dueCount, todayReviewed, profile.dailyTarget, words.length),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
 
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,13 +331,13 @@ class DashboardScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionHeader('Curriculum Modes'),
-                          const SizedBox(height: 10),
+                          _buildSectionHeader('SYSTEM CURRICULUM'),
+                          const SizedBox(height: 8),
                           _buildModesPanel(context, words.length),
                           const SizedBox(height: 24),
                           
-                          _buildSectionHeader('Vocabulary Status'),
-                          const SizedBox(height: 10),
+                          _buildSectionHeader('VOCABULARY STATUS'),
+                          const SizedBox(height: 8),
                           _buildStatsRow(mastered, weak, unlearned),
                         ],
                       ),
@@ -346,8 +349,8 @@ class DashboardScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSectionHeader('Recently Reviewed'),
-                          const SizedBox(height: 10),
+                          _buildSectionHeader('SYSTEM MEASUREMENT LOG'),
+                          const SizedBox(height: 8),
                           _buildRecentWordsTable(context, words),
                         ],
                       ),
@@ -371,45 +374,66 @@ class DashboardScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Welcome back, $name.',
-          style: GoogleFonts.inter(
+          'WELCOME BACK, ${name.toUpperCase()}.',
+          style: GoogleFonts.shareTechMono(
             fontSize: 22,
             fontWeight: FontWeight.bold,
             color: AppTheme.textPrimary,
-            letterSpacing: -0.5,
+            letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
           dueCount > 0
-              ? 'You have $dueCount words scheduled for review under Spaced Repetition.'
-              : 'All scheduled words have been reviewed. Ready to learn more?',
-          style: const TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 12,
+              ? 'WARNING: $dueCount WORDS ARE CURRENTLY DUE FOR REVIEW.'
+              : 'SYSTEM STATUS: ALL SCHEDULED REVIEWS RECONCILED. NO OUTSTANDING DEBTS.',
+          style: GoogleFonts.shareTechMono(
+            color: dueCount > 0 ? AppTheme.warning : AppTheme.success,
+            fontSize: 11,
           ),
         ),
       ],
     );
   }
 
-  // Streak Badge
-  Widget _buildStreakChip(int streakDays) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppTheme.warning.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(4.0),
-        border: Border.all(color: AppTheme.warning.withOpacity(0.2)),
-      ),
-      child: Text(
-        '${streakDays}d streak',
-        style: const TextStyle(
-          color: AppTheme.warning,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
+  // Hardware LED Streak indicator
+  Widget _buildStreakLeds(int streakDays) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: List.generate(7, (i) {
+            final isLit = i < streakDays;
+            return Container(
+              margin: const EdgeInsets.only(right: 4.0),
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isLit ? AppTheme.warning : AppTheme.warning.withOpacity(0.12),
+                boxShadow: isLit
+                    ? [
+                        BoxShadow(
+                          color: AppTheme.warning.withOpacity(0.5),
+                          blurRadius: 3,
+                          spreadRadius: 0.5,
+                        )
+                      ]
+                    : null,
+              ),
+            );
+          }),
         ),
-      ),
+        const SizedBox(height: 4),
+        Text(
+          'STREAK: $streakDays DAYS ACTIVE',
+          style: GoogleFonts.shareTechMono(
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textSecondary,
+          ),
+        )
+      ],
     );
   }
 
@@ -417,39 +441,32 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildSidebarItem(BuildContext context, IconData icon, String title, VoidCallback? onTap) {
     final active = onTap == null;
     return Container(
-      margin: const EdgeInsets.only(bottom: 4.0),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: active
-                ? BoxDecoration(
-                    color: AppTheme.primary.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  )
-                : null,
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 16,
-                  color: active ? AppTheme.primary : AppTheme.textSecondary,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                    color: active ? AppTheme.textPrimary : AppTheme.textSecondary,
-                  ),
-                )
-              ],
+      margin: const EdgeInsets.only(bottom: 8.0),
+      child: TactileButton(
+        height: 38,
+        onPressed: active ? null : onTap,
+        color: active ? AppTheme.hover : AppTheme.surface,
+        ledColor: AppTheme.primary,
+        isLedOn: active,
+        child: Row(
+          children: [
+            const SizedBox(width: 12),
+            Icon(
+              icon,
+              size: 14,
+              color: active ? AppTheme.primary : AppTheme.textSecondary,
             ),
-          ),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: GoogleFonts.shareTechMono(
+                fontSize: 12,
+                fontWeight: active ? FontWeight.bold : FontWeight.w500,
+                color: active ? AppTheme.textPrimary : AppTheme.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            )
+          ],
         ),
       ),
     );
@@ -463,9 +480,14 @@ class DashboardScreen extends ConsumerWidget {
     int dailyTarget,
     int totalWords,
   ) {
+    final progress = dailyTarget > 0 ? (todayReviewed / dailyTarget).clamp(0.0, 1.0) : 0.0;
     return Container(
-      padding: const EdgeInsets.all(20.0),
-      decoration: AppTheme.cardDecoration(withShadow: false),
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        border: Border.all(color: AppTheme.borderColor),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      ),
       child: Row(
         children: [
           Expanded(
@@ -473,56 +495,77 @@ class DashboardScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'DAILY SESSION',
-                  style: GoogleFonts.inter(
+                  'DAILY SESSION MODULE',
+                  style: GoogleFonts.shareTechMono(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.primary,
-                    letterSpacing: 0.8,
+                    letterSpacing: 1.0,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '$todayReviewed / $dailyTarget reviewed today',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
+                  'LOG: $todayReviewed / $dailyTarget REVIEWS COMPLETED TODAY',
+                  style: GoogleFonts.shareTechMono(
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
-                  'Target progress indicator. $dueCount words remaining due.',
-                  style: const TextStyle(
+                  'STATUS: $dueCount DUE WORDS REMAINING IN QUEUE.',
+                  style: GoogleFonts.shareTechMono(
                     color: AppTheme.textSecondary,
-                    fontSize: 11,
+                    fontSize: 10,
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Linear Progress bar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2.0),
-                  child: SizedBox(
-                    height: 4,
-                    child: LinearProgressIndicator(
-                      value: dailyTarget > 0 ? (todayReviewed / dailyTarget).clamp(0.0, 1.0) : 0.0,
-                      backgroundColor: const Color(0xFF2E2E33),
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                    ),
-                  ),
+                
+                // LED segments styled progress indicator
+                Row(
+                  children: List.generate(20, (i) {
+                    final isLit = (i / 20.0) < progress;
+                    return Expanded(
+                      child: Container(
+                        height: 6,
+                        margin: const EdgeInsets.only(right: 2.0),
+                        decoration: BoxDecoration(
+                          color: isLit ? AppTheme.primary : AppTheme.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(1.0),
+                          boxShadow: isLit
+                              ? [
+                                  BoxShadow(
+                                    color: AppTheme.primary.withOpacity(0.4),
+                                    blurRadius: 2,
+                                  )
+                                ]
+                              : null,
+                        ),
+                      ),
+                    );
+                  }),
                 )
               ],
             ),
           ),
-          const SizedBox(width: 24),
-          ElevatedButton(
+          const SizedBox(width: 20),
+          TactileButton(
+            width: 140,
+            height: 46,
             onPressed: () => _startDueReview(context, totalWords),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(120, 42),
-              backgroundColor: AppTheme.primary,
-              foregroundColor: Colors.white,
+            color: dueCount > 0 ? AppTheme.primary : AppTheme.hover,
+            ledColor: Colors.white,
+            isLedOn: dueCount > 0,
+            child: Text(
+              dueCount > 0 ? 'RUN REVIEW ($dueCount)' : 'START SESSION',
+              style: GoogleFonts.shareTechMono(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: dueCount > 0 ? AppTheme.displayBg : AppTheme.textPrimary,
+                letterSpacing: 0.5,
+              ),
             ),
-            child: Text(dueCount > 0 ? 'Review $dueCount' : 'Start Review'),
           )
         ],
       ),
@@ -532,61 +575,81 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
-      style: GoogleFonts.inter(
+      style: GoogleFonts.shareTechMono(
         fontSize: 11,
         fontWeight: FontWeight.bold,
         color: AppTheme.textSecondary,
-        letterSpacing: 0.5,
+        letterSpacing: 0.8,
       ),
     );
   }
 
-  // Sparkline chart card
-  Widget _buildSparklineCard(List<double> data) {
+  // Custom VFD Spectrum Visualizer
+  Widget _buildSpectrumCard(List<int> data) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      decoration: AppTheme.cardDecoration(),
+      height: 80,
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      decoration: AppTheme.displayDecoration(glow: true),
       child: CustomPaint(
-        painter: SparklinePainter(data),
+        painter: VFDSpectrumPainter(data),
         child: Container(),
       ),
     );
   }
 
-  // Stats Counters
+  // Stats Counters (Styled as hardware display windows)
   Widget _buildStatsRow(int mastered, int weak, int unlearned) {
     return Row(
       children: [
         Expanded(child: _buildStatCell('MASTERED', mastered, AppTheme.success)),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Expanded(child: _buildStatCell('WEAK', weak, AppTheme.error)),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Expanded(child: _buildStatCell('UNLEARNED', unlearned, AppTheme.textSecondary)),
       ],
     );
   }
 
-  Widget _buildStatCell(String title, int count, Color color) {
+  Widget _buildStatCell(String title, int count, Color ledColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
-      decoration: AppTheme.cardDecoration(),
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 14.0),
+      decoration: AppTheme.displayDecoration(glow: false),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: GoogleFonts.inter(
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-              color: color,
-              letterSpacing: 0.5,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              // Tiny state indicator LED
+              Container(
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ledColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: ledColor.withOpacity(0.5),
+                      blurRadius: 2,
+                    )
+                  ],
+                ),
+              )
+            ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
-            '$count',
-            style: GoogleFonts.inter(
-              fontSize: 20,
+            count.toString().padLeft(3, '0'),
+            style: GoogleFonts.shareTechMono(
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppTheme.textPrimary,
             ),
@@ -599,13 +662,17 @@ class DashboardScreen extends ConsumerWidget {
   // Menu items for Quiz, Spelling, Radio
   Widget _buildModesPanel(BuildContext context, int totalWords) {
     return Container(
-      decoration: AppTheme.cardDecoration(),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        border: Border.all(color: AppTheme.borderColor),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      ),
       child: Column(
         children: [
           _buildModeRow(
             context,
-            '01 / QUIZ',
-            'Multiple choice retention test',
+            '01 // RETENTION QUIZ',
+            'MULTIPLE CHOICE RETENTION ASSESSMENT',
             () => _startLearningConfig(
               context, totalWords,
               isTest: true, isSpelling: false,
@@ -615,8 +682,8 @@ class DashboardScreen extends ConsumerWidget {
           const Divider(height: 1, thickness: 1),
           _buildModeRow(
             context,
-            '02 / SPELLING',
-            'Active dictation writing assessment',
+            '02 // SPELLING DICTATION',
+            'ACTIVE WRITING AND RECALL ASSESSMENT',
             () => _startLearningConfig(
               context, totalWords,
               isTest: true, isSpelling: true,
@@ -626,8 +693,8 @@ class DashboardScreen extends ConsumerWidget {
           const Divider(height: 1, thickness: 1),
           _buildModeRow(
             context,
-            '03 / RADIO CHAT',
-            'Interactive simulated AI conversation',
+            '03 // AI RADIO CONSOLE',
+            'INTERACTIVE SIMULATED AI COMMUNICATION',
             () => Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const ChatTestScreen()),
             ),
@@ -640,36 +707,39 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildModeRow(BuildContext context, String code, String desc, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  code,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    code,
+                    style: GoogleFonts.shareTechMono(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                ),
-                Text(
-                  desc,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppTheme.textSecondary,
+                  const SizedBox(height: 2),
+                  Text(
+                    desc,
+                    style: GoogleFonts.shareTechMono(
+                      fontSize: 9,
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 12,
-              color: AppTheme.textMuted,
+              Icons.chevron_right_rounded,
+              size: 16,
+              color: AppTheme.textSecondary,
             )
           ],
         ),
@@ -677,26 +747,29 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // Recently Reviewed Data Table
+  // Recently Reviewed Data Table (styled like measuring log)
   Widget _buildRecentWordsTable(BuildContext context, List<Word> words) {
     final now = DateTime.now();
-    // Sort words by reviewedAt desc, taking only the ones actually reviewed
     final reviewedWords = words
         .where((w) => w.reviewedAt != null)
         .toList();
     reviewedWords.sort((a, b) => b.reviewedAt!.compareTo(a.reviewedAt!));
     
-    final recent = reviewedWords.take(7).toList();
+    final recent = reviewedWords.take(6).toList();
 
     return Container(
-      decoration: AppTheme.cardDecoration(),
+      decoration: BoxDecoration(
+        color: AppTheme.displayBg,
+        border: Border.all(color: AppTheme.borderColor),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      ),
       child: recent.isEmpty
-          ? const SizedBox(
-              height: 180,
+          ? SizedBox(
+              height: 160,
               child: Center(
                 child: Text(
-                  'No reviews recorded yet today.',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  'LOG: NO RECORDS IN SYSTEM MEMORY.',
+                  style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 11),
                 ),
               ),
             )
@@ -704,36 +777,36 @@ class DashboardScreen extends ConsumerWidget {
               children: [
                 // Table header
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-                  color: AppTheme.background.withOpacity(0.5),
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                  color: AppTheme.surface,
                   child: Row(
                     children: [
                       Expanded(
                         flex: 3,
                         child: Text(
-                          'WORD',
-                          style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                          'INDEX/WORD',
+                          style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                         ),
                       ),
                       Expanded(
                         flex: 3,
                         child: Text(
                           'MEANING',
-                          style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                          style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                         ),
                       ),
                       Expanded(
                         flex: 2,
                         child: Text(
-                          'STATUS',
-                          style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                          'STATE',
+                          style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                         ),
                       ),
                       Expanded(
                         flex: 2,
                         child: Text(
-                          'NEXT',
-                          style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                          'RE-SCHED',
+                          style: GoogleFonts.shareTechMono(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                         ),
                       ),
                     ],
@@ -744,32 +817,32 @@ class DashboardScreen extends ConsumerWidget {
                 // Table rows
                 ...recent.map((word) {
                   final due = word.nextReviewAt == null || word.nextReviewAt!.isBefore(now);
-                  String nextText = 'Due';
+                  String nextText = 'DUE';
                   Color nextColor = AppTheme.warning;
 
                   if (!due && word.nextReviewAt != null) {
                     final diff = word.nextReviewAt!.difference(now).inDays;
                     if (diff <= 0) {
-                      nextText = 'Tomorrow';
+                      nextText = 'TOMORROW';
                       nextColor = AppTheme.textSecondary;
                     } else {
-                      nextText = 'in ${diff + 1}d';
+                      nextText = 'IN ${diff + 1}D';
                       nextColor = AppTheme.textSecondary;
                     }
                   }
 
                   Color statusColor = AppTheme.textSecondary;
-                  String statusText = 'New';
+                  String statusText = 'NEW';
                   if (word.status == 1) {
                     statusColor = AppTheme.success;
-                    statusText = 'Mastered';
+                    statusText = 'MASTER';
                   } else if (word.status == 2) {
                     statusColor = AppTheme.error;
-                    statusText = 'Weak';
+                    statusText = 'WEAK';
                   }
 
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                     decoration: const BoxDecoration(
                       border: Border(
                         bottom: BorderSide(color: AppTheme.borderColor, width: 0.5),
@@ -780,8 +853,8 @@ class DashboardScreen extends ConsumerWidget {
                         Expanded(
                           flex: 3,
                           child: Text(
-                            word.spelling,
-                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                            '#${word.id.toString().padLeft(3, '0')} ${word.spelling.toUpperCase()}',
+                            style: GoogleFonts.shareTechMono(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -789,7 +862,7 @@ class DashboardScreen extends ConsumerWidget {
                           flex: 3,
                           child: Text(
                             word.meaningJa,
-                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -797,14 +870,14 @@ class DashboardScreen extends ConsumerWidget {
                           flex: 2,
                           child: Text(
                             statusText,
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor),
+                            style: GoogleFonts.shareTechMono(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
                           ),
                         ),
                         Expanded(
                           flex: 2,
                           child: Text(
                             nextText,
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: nextColor),
+                            style: GoogleFonts.shareTechMono(fontSize: 10, fontWeight: FontWeight.bold, color: nextColor),
                           ),
                         ),
                       ],
@@ -817,53 +890,59 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-// ── Custom Sparkline Painter ──
-class SparklinePainter extends CustomPainter {
-  final List<double> data;
-  SparklinePainter(this.data);
+// ── Custom VFD Spectrum Painter ──
+// Draws an audio equalizer style spectrum analyzer using segment blocks.
+class VFDSpectrumPainter extends CustomPainter {
+  final List<int> data;
+  VFDSpectrumPainter(this.data);
 
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
 
-    final paint = Paint()
-      ..color = AppTheme.primary
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final double paddingX = 6.0;
+    final double spacingX = 4.0;
+    final int maxSegments = 10;
+    final double colWidth = (size.width - (paddingX * 2) - (spacingX * 6)) / 7;
+    final double segSpacingY = 2.0;
+    final double segHeight = (size.height - (segSpacingY * (maxSegments - 1))) / maxSegments;
 
-    final path = Path();
-    final double stepX = size.width / (data.length - 1);
-    final double maxVal = data.reduce(max);
-    final double minVal = data.reduce(min);
-    final double range = (maxVal - minVal) == 0 ? 1.0 : (maxVal - minVal);
+    final double maxVal = data.reduce(max).toDouble();
+    final double range = maxVal == 0 ? 1.0 : maxVal;
 
-    for (int i = 0; i < data.length; i++) {
-      final double x = i * stepX;
-      // Invert Y axis
-      final double y = size.height - ((data[i] - minVal) / range * (size.height - 12) + 6);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
+    for (int col = 0; col < 7; col++) {
+      final double x = paddingX + col * (colWidth + spacingX);
+      
+      // Calculate how many segments should be lit
+      final double rawNormalized = data[col] / range;
+      final int litCount = (rawNormalized * maxSegments).round();
+
+      for (int row = 0; row < maxSegments; row++) {
+        // Draw bottom-up: index 0 is bottom, index 9 is top
+        final double y = size.height - (row + 1) * (segHeight + segSpacingY) + segSpacingY;
+        final bool isLit = row < litCount && data[col] > 0;
+
+        Color blockColor;
+        if (row < 5) {
+          blockColor = AppTheme.success; // Bottom 5: Green
+        } else if (row < 8) {
+          blockColor = AppTheme.warning; // Middle 3: Yellow
+        } else {
+          blockColor = AppTheme.error;   // Top 2: Red
+        }
+
+        final paint = Paint()
+          ..color = isLit ? blockColor : blockColor.withOpacity(0.06)
+          ..style = PaintingStyle.fill;
+
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(x, y, colWidth, segHeight),
+            const Radius.circular(0.5),
+          ),
+          paint,
+        );
       }
-    }
-
-    canvas.drawPath(path, paint);
-
-    // Draw point nodes
-    final dotPaint = Paint()
-      ..color = AppTheme.primary
-      ..style = PaintingStyle.fill;
-    final dotOuterPaint = Paint()
-      ..color = AppTheme.surface
-      ..style = PaintingStyle.fill;
-
-    for (int i = 0; i < data.length; i++) {
-      final double x = i * stepX;
-      final double y = size.height - ((data[i] - minVal) / range * (size.height - 12) + 6);
-      canvas.drawCircle(Offset(x, y), 3.5, dotPaint);
-      canvas.drawCircle(Offset(x, y), 1.5, dotOuterPaint);
     }
   }
 
@@ -872,7 +951,7 @@ class SparklinePainter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════════════════
-// LEARNING CONFIG BOTTOM SHEET
+// LEARNING CONFIG BOTTOM SHEET (Physical tuning chassis style)
 // ═══════════════════════════════════════════════════════════
 class _LearningConfigBottomSheet extends StatefulWidget {
   final bool isTest;
@@ -891,7 +970,7 @@ class _LearningConfigBottomSheet extends StatefulWidget {
 
 class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> {
   late LanguageDirection _direction;
-  RangeType _rangeType = RangeType.due; // Due by default under SM2
+  RangeType _rangeType = RangeType.due;
   OrderType _orderType = OrderType.random;
   int _questionCount = 10;
   
@@ -923,13 +1002,15 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppTheme.elevated,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+        color: AppTheme.surface,
+        border: Border(
+          top: BorderSide(color: AppTheme.borderColor, width: 1.0),
+        ),
       ),
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        top: 24,
+        top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       child: SingleChildScrollView(
@@ -938,18 +1019,18 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'CONFIGURATION',
-              style: GoogleFonts.inter(
-                fontSize: 11,
+              'TUNING_PANEL // CONFIG',
+              style: GoogleFonts.shareTechMono(
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.textSecondary,
+                color: AppTheme.primary,
                 letterSpacing: 1.0,
               ),
             ),
             const SizedBox(height: 20),
 
             if (!widget.isSpelling) ...[
-              _buildSectionTitle('DIRECTION'),
+              _buildSectionTitle('SIGNAL DIRECTION'),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -961,7 +1042,7 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
               const SizedBox(height: 20),
             ],
 
-            _buildSectionTitle('SCOPE'),
+            _buildSectionTitle('CHASSIS SCOPE'),
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
@@ -985,7 +1066,7 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                     child: TextField(
                       controller: _startIdController,
                       keyboardType: TextInputType.number,
-                      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                      style: GoogleFonts.shareTechMono(color: AppTheme.textPrimary, fontSize: 13),
                       decoration: _inputDecoration('START ID'),
                     ),
                   ),
@@ -994,7 +1075,7 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                     child: TextField(
                       controller: _endIdController,
                       keyboardType: TextInputType.number,
-                      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                      style: GoogleFonts.shareTechMono(color: AppTheme.textPrimary, fontSize: 13),
                       decoration: _inputDecoration('END ID'),
                     ),
                   ),
@@ -1018,7 +1099,7 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
               const SizedBox(height: 8),
             ],
 
-            _buildSectionTitle('ORDER'),
+            _buildSectionTitle('OUTPUT SORT ORDER'),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -1032,7 +1113,7 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
             const SizedBox(height: 20),
 
             if (widget.isTest) ...[
-              _buildSectionTitle('QUESTIONS'),
+              _buildSectionTitle('QUESTIONS QUANTITY'),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -1048,7 +1129,8 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
               const SizedBox(height: 28),
             ],
 
-            ElevatedButton(
+            TactileButton(
+              height: 48,
               onPressed: () {
                 int startId = int.tryParse(_startIdController.text) ?? 1;
                 int endId = int.tryParse(_endIdController.text) ?? 100;
@@ -1064,12 +1146,18 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
                   questionCount: _questionCount,
                 ));
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 44),
+              color: AppTheme.primary,
+              ledColor: Colors.white,
+              isLedOn: true,
+              child: Text(
+                'INITIALIZE SESSION',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.displayBg,
+                  letterSpacing: 0.5,
+                ),
               ),
-              child: const Text('BEGIN'),
             ),
           ],
         ),
@@ -1080,7 +1168,7 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: GoogleFonts.inter(
+      style: GoogleFonts.shareTechMono(
         fontSize: 10,
         fontWeight: FontWeight.bold,
         color: AppTheme.textSecondary,
@@ -1090,27 +1178,18 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   }
 
   Widget _buildChoiceItem(String title, bool selected, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.primary.withOpacity(0.08) : Colors.transparent,
-          border: Border.all(
-            color: selected ? AppTheme.primary : AppTheme.borderColor,
-          ),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        ),
-        child: Center(
-          child: Text(
-            title,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
-            ),
-          ),
+    return TactileButton(
+      height: 38,
+      onPressed: onTap,
+      color: selected ? AppTheme.hover : AppTheme.surface,
+      ledColor: AppTheme.primary,
+      isLedOn: selected,
+      child: Text(
+        title,
+        style: GoogleFonts.shareTechMono(
+          fontSize: 12,
+          fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+          color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
         ),
       ),
     );
@@ -1118,22 +1197,21 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
 
   Widget _buildFilterChip(String label, RangeType type) {
     final selected = _rangeType == type;
-    return InkWell(
-      onTap: () => setState(() => _rangeType = type),
-      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.primary.withOpacity(0.12) : Colors.transparent,
-          border: Border.all(color: selected ? AppTheme.primary : AppTheme.borderColor),
-          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        ),
+    return Container(
+      width: 140,
+      margin: const EdgeInsets.only(right: 6, bottom: 6),
+      child: TactileButton(
+        height: 34,
+        onPressed: () => setState(() => _rangeType = type),
+        color: selected ? AppTheme.hover : AppTheme.surface,
+        ledColor: AppTheme.primary,
+        isLedOn: selected,
         child: Text(
           label,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.shareTechMono(
             fontSize: 10,
             color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            fontWeight: selected ? FontWeight.bold : FontWeight.w500,
           ),
         ),
       ),
@@ -1141,19 +1219,15 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   }
 
   Widget _buildQuickRangeButton(int start, int end) {
-    return InkWell(
-      onTap: () => _selectQuickRange(start, end),
-      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      child: Container(
-        margin: const EdgeInsets.only(right: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          border: Border.all(color: AppTheme.borderColor),
-          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        ),
+    return Container(
+      width: 70,
+      margin: const EdgeInsets.only(right: 6),
+      child: TactileButton(
+        height: 28,
+        onPressed: () => _selectQuickRange(start, end),
         child: Text(
           '$start-$end',
-          style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+          style: GoogleFonts.shareTechMono(fontSize: 10, color: AppTheme.textSecondary),
         ),
       ),
     );
@@ -1162,11 +1236,12 @@ class _LearningConfigBottomSheetState extends State<_LearningConfigBottomSheet> 
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+      labelStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 10),
       filled: true,
-      fillColor: AppTheme.surface,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMd), borderSide: const BorderSide(color: AppTheme.borderColor)),
+      fillColor: AppTheme.displayBg,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: const BorderSide(color: AppTheme.borderColor)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: const BorderSide(color: AppTheme.borderColor)),
     );
   }
 }

@@ -26,7 +26,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Load current values
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final profile = ref.read(userProfileProvider);
       _nameController.text = profile.name;
@@ -63,7 +62,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         setState(() {
           _isTesting = false;
           _testSuccess = success;
-          _testMessage = result['message'] as String? ?? (success ? 'Connection successful.' : 'Connection failed.');
+          _testMessage = result['message'] as String? ?? (success ? 'CONNECTION SUCCESSFUL.' : 'CONNECTION FAILED.');
         });
       }
     } catch (e) {
@@ -71,7 +70,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         setState(() {
           _isTesting = false;
           _testSuccess = false;
-          _testMessage = 'Error: ${e.toString()}';
+          _testMessage = 'ERROR: ${e.toString().toUpperCase()}';
         });
       }
     }
@@ -94,10 +93,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('SETTINGS SAVED', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.5)),
+        content: Text(
+          'LOG: SETTINGS RE-CALIBRATED SUCCESSFULLY.',
+          style: GoogleFonts.shareTechMono(fontWeight: FontWeight.bold, fontSize: 12),
+        ),
         backgroundColor: AppTheme.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMd)),
       ),
     );
     Navigator.of(context).pop();
@@ -108,39 +108,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('SETTINGS'),
+        title: const Text('CALIBRATION // SETTINGS'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
+          icon: const Icon(Icons.chevron_left_rounded, size: 18),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildSectionTitle('Profile Configuration'),
+              _buildSectionTitle('CHASSIS CONFIGURATION'),
               const SizedBox(height: 16),
               _buildTextField(
                 controller: _nameController,
-                label: 'NAME',
-                hint: 'Enter your name',
+                label: 'USER_NAME',
+                hint: 'ENTER OPERATOR NAME...',
               ),
               const SizedBox(height: 16),
               _buildTextField(
                 controller: _interestsController,
                 label: 'LEARNING INTERESTS (COMMA SEPARATED)',
-                hint: 'e.g., Finance, Tech, Art, Gardening',
+                hint: 'E.G., FINANCE, TECH, ART, GARDENING',
               ),
               
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               
-              _buildSectionTitle('Daily Target Goals'),
+              _buildSectionTitle('POTENTIOMETER GOALS'),
               const SizedBox(height: 12),
               Text(
-                'DAILY REVIEW TARGET COUNT',
-                style: GoogleFonts.inter(
+                'DAILY REVIEW TARGET LEVEL',
+                style: GoogleFonts.shareTechMono(
                   fontSize: 9,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textSecondary,
@@ -149,8 +149,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: AppTheme.cardDecoration(),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: AppTheme.displayDecoration(glow: false),
                 child: Row(
                   children: [
                     Expanded(
@@ -159,9 +159,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           activeTrackColor: AppTheme.primary,
                           inactiveTrackColor: AppTheme.borderColor,
                           thumbColor: Colors.white,
-                          trackHeight: 2,
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                          trackHeight: 1,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                          activeTickMarkColor: AppTheme.primary,
+                          inactiveTickMarkColor: AppTheme.borderColor,
                         ),
                         child: Slider(
                           value: _dailyTarget.toDouble(),
@@ -178,9 +180,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     const SizedBox(width: 16),
                     Text(
-                      '$_dailyTarget',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
+                      '$_dailyTarget UNIT',
+                      style: GoogleFonts.shareTechMono(
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textPrimary,
                       ),
@@ -189,21 +191,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               
-              _buildSectionTitle('AI Language Engine'),
+              _buildSectionTitle('AI DIALOG ENGINE TUNER'),
               const SizedBox(height: 16),
               _buildTextField(
                 controller: _apiKeyController,
-                label: 'GEMINI API KEY',
+                label: 'GEMINI API KEY (TELEMETRY AUTHS)',
                 hint: 'AIzaSy...',
                 obscureText: true,
               ),
               const SizedBox(height: 16),
               
               Text(
-                'GEMINI ENGINE MODEL',
-                style: GoogleFonts.inter(
+                'GEMINI CORE MODEL STATE',
+                style: GoogleFonts.shareTechMono(
                   fontSize: 9,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textSecondary,
@@ -213,23 +215,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Expanded(child: _buildModelChoice('gemini-2.5-flash', 'Flash (Fast / Default)')),
+                  Expanded(child: _buildModelChoice('gemini-2.5-flash', 'FLASH (FAST / DEFAULT)')),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildModelChoice('gemini-2.5-pro', 'Pro (Smart / Creative)')),
+                  Expanded(child: _buildModelChoice('gemini-2.5-pro', 'PRO (SMART / CREATIVE)')),
                 ],
               ),
               
               const SizedBox(height: 16),
               
-              // Test Connection Button
-              OutlinedButton(
+              // Test Connection Button (styled as tactile check key)
+              TactileButton(
+                height: 38,
                 onPressed: _isTesting ? null : _testConnection,
                 child: _isTesting
                     ? const SizedBox(
-                        width: 16, height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.textSecondary),
+                        width: 12, height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.primary),
                       )
-                    : const Text('TEST API CONNECTION'),
+                    : Text(
+                        'TEST TRANSCEIVER SIGNAL',
+                        style: GoogleFonts.shareTechMono(fontWeight: FontWeight.bold, fontSize: 11),
+                      ),
               ),
               
               if (_testSuccess != null) ...[
@@ -237,25 +243,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _testSuccess! ? AppTheme.success.withOpacity(0.06) : AppTheme.error.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    color: AppTheme.displayBg,
                     border: Border.all(
-                      color: _testSuccess! ? AppTheme.success.withOpacity(0.3) : AppTheme.error.withOpacity(0.3),
+                      color: _testSuccess! ? AppTheme.success : AppTheme.error,
+                      width: 0.5,
                     ),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        _testSuccess! ? Icons.check_circle_outline_rounded : Icons.error_outline_rounded,
-                        color: _testSuccess! ? AppTheme.success : AppTheme.error,
-                        size: 16,
+                      // Status LED dot
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _testSuccess! ? AppTheme.success : AppTheme.error,
+                          boxShadow: [
+                            BoxShadow(color: _testSuccess! ? AppTheme.success : AppTheme.error, blurRadius: 4),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _testMessage ?? '',
-                          style: TextStyle(
-                            fontSize: 12,
+                          style: GoogleFonts.shareTechMono(
+                            fontSize: 11,
                             color: _testSuccess! ? AppTheme.success : AppTheme.error,
                           ),
                         ),
@@ -265,12 +278,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
               
-              const SizedBox(height: 48),
+              const SizedBox(height: 36),
               
               // Save Button
-              ElevatedButton(
+              TactileButton(
+                height: 48,
                 onPressed: _saveSettings,
-                child: const Text('SAVE CONFIGURATION'),
+                color: AppTheme.primary,
+                ledColor: Colors.white,
+                isLedOn: true,
+                child: Text(
+                  'SAVE CONFIGURATION',
+                  style: GoogleFonts.shareTechMono(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.displayBg,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
             ],
@@ -283,11 +307,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: GoogleFonts.inter(
-        fontSize: 15,
+      style: GoogleFonts.shareTechMono(
+        fontSize: 12,
         fontWeight: FontWeight.bold,
-        color: AppTheme.textPrimary,
-        letterSpacing: -0.3,
+        color: AppTheme.primary,
+        letterSpacing: 0.5,
       ),
     );
   }
@@ -303,20 +327,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.shareTechMono(
             fontSize: 9,
             fontWeight: FontWeight.bold,
             color: AppTheme.textSecondary,
-            letterSpacing: 0.5,
           ),
         ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
           obscureText: obscureText,
-          style: const TextStyle(fontSize: 13),
+          style: GoogleFonts.shareTechMono(fontSize: 13, color: AppTheme.textPrimary),
           decoration: InputDecoration(
             hintText: hint,
+            hintStyle: GoogleFonts.shareTechMono(color: AppTheme.textMuted, fontSize: 13),
+            prefixText: 'PARM > ',
+            prefixStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 13),
           ),
         ),
       ],
@@ -325,32 +351,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildModelChoice(String modelValue, String label) {
     final isSelected = _selectedModel == modelValue;
-    return InkWell(
-      onTap: () {
+    return TactileButton(
+      height: 40,
+      onPressed: () {
         setState(() {
           _selectedModel = modelValue;
         });
       },
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary.withOpacity(0.08) : Colors.transparent,
-          border: Border.all(
-            color: isSelected ? AppTheme.primary : AppTheme.borderColor,
-          ),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? AppTheme.textPrimary : AppTheme.textSecondary,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
+      color: isSelected ? AppTheme.hover : AppTheme.surface,
+      ledColor: AppTheme.primary,
+      isLedOn: isSelected,
+      child: Text(
+        label,
+        style: GoogleFonts.shareTechMono(
+          fontSize: 11,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          color: isSelected ? AppTheme.textPrimary : AppTheme.textSecondary,
         ),
       ),
     );

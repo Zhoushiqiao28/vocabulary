@@ -23,6 +23,12 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> {
   bool _showFront = true;
   bool _isAILoading = false;
 
+  // External physical keyboard animation states
+  bool _isSpacePressed = false;
+  bool _is1Pressed = false;
+  bool _is2Pressed = false;
+  bool _is3Pressed = false;
+
   final FlutterTts _flutterTts = FlutterTts();
   final FocusNode _keyboardFocusNode = FocusNode();
 
@@ -32,7 +38,6 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> {
     _initTts();
     _initWords();
     
-    // Request keyboard focus
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _keyboardFocusNode.requestFocus();
     });
@@ -263,30 +268,29 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> {
         return Container(
           height: MediaQuery.of(context).size.height * 0.65,
           decoration: const BoxDecoration(
-            color: AppTheme.elevated,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+            color: AppTheme.surface,
+            border: Border(top: BorderSide(color: AppTheme.borderColor)),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'AI INSIGHT',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
+                'AI_INSIGHT // SPECTRUM_ANALYZE',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.primary,
                   letterSpacing: 1.5,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
-                spelling.toLowerCase(),
-                style: GoogleFonts.inter(
-                  fontSize: 24,
+                spelling.toUpperCase(),
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimary,
-                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 20),
@@ -294,20 +298,21 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> {
                 child: SingleChildScrollView(
                   child: Text(
                     explanation,
-                    style: const TextStyle(
+                    style: GoogleFonts.shareTechMono(
                       fontSize: 13,
                       color: AppTheme.textPrimary,
-                      height: 1.6,
+                      height: 1.5,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('CLOSE'),
+              const SizedBox(height: 20),
+              TactileButton(
+                height: 44,
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'DISMISS',
+                  style: GoogleFonts.shareTechMono(fontWeight: FontWeight.bold),
                 ),
               )
             ],
@@ -317,13 +322,38 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> {
     );
   }
 
+  // Helper to flash tactile animation on keyboard press
+  void _flashKeyAnimation(String key) {
+    if (key == 'space') {
+      setState(() => _isSpacePressed = true);
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) setState(() => _isSpacePressed = false);
+      });
+    } else if (key == '1') {
+      setState(() => _is1Pressed = true);
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) setState(() => _is1Pressed = false);
+      });
+    } else if (key == '2') {
+      setState(() => _is2Pressed = true);
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) setState(() => _is2Pressed = false);
+      });
+    } else if (key == '3') {
+      setState(() => _is3Pressed = true);
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) setState(() => _is3Pressed = false);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: AppTheme.background,
         body: Center(
-          child: SpinKitPulse(color: AppTheme.textSecondary, size: 40),
+          child: SpinKitPulse(color: AppTheme.primary, size: 40),
         ),
       );
     }
@@ -334,26 +364,29 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> {
 
     final currentWord = _learningWords[_currentIndex];
 
-    // Wrap in a Focus widget to capture physical keyboard keys
     return Focus(
       focusNode: _keyboardFocusNode,
       autofocus: true,
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.space) {
+            _flashKeyAnimation('space');
             _flipCard();
             return KeyEventResult.handled;
           } else if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) {
             if (!_showFront) {
+              _flashKeyAnimation('1');
               _submitAnswer(2); // Weak
             }
             return KeyEventResult.handled;
           } else if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) {
             if (!_showFront) {
+              _flashKeyAnimation('2');
               _submitAnswer(1); // Mastered
             }
             return KeyEventResult.handled;
           } else if (event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) {
+            _flashKeyAnimation('3');
             _askAIAboutWord();
             return KeyEventResult.handled;
           }
@@ -366,17 +399,17 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> {
           backgroundColor: AppTheme.background,
           elevation: 0,
           title: Text(
-            '${_currentIndex + 1} / ${_learningWords.length}',
-            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+            'CHASSIS_SLOT: ${_currentIndex + 1} / ${_learningWords.length}',
+            style: GoogleFonts.shareTechMono(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
           ),
           centerTitle: true,
           leading: IconButton(
-            icon: const Icon(Icons.close_rounded),
+            icon: const Icon(Icons.close_rounded, size: 16),
             onPressed: () => Navigator.pop(context),
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.info_outline_rounded),
+              icon: const Icon(Icons.info_outline_rounded, size: 16),
               onPressed: _askAIAboutWord,
             )
           ],
@@ -387,61 +420,110 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Spacer(),
-                
-                // Studio mode central text display
-                Center(
-                  child: _isAILoading
-                      ? const SpinKitThreeBounce(color: AppTheme.primary, size: 24)
-                      : _buildWorkspaceContent(currentWord),
+                // VFD Monitor glass window
+                Expanded(
+                  child: Container(
+                    decoration: AppTheme.displayDecoration(glow: true),
+                    padding: const EdgeInsets.all(24.0),
+                    alignment: Alignment.center,
+                    child: _isAILoading
+                        ? const SpinKitThreeBounce(color: AppTheme.primary, size: 24)
+                        : _buildWorkspaceContent(currentWord),
+                  ),
                 ),
-                
-                const Spacer(),
+                const SizedBox(height: 24),
 
-                // Action area based on Front/Back state
+                // Physical tactile buttons row
                 Column(
                   children: [
                     if (_showFront) ...[
-                      OutlinedButton(
+                      TactileButton(
+                        height: 48,
                         onPressed: _flipCard,
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 44),
+                        isPressedExternal: _isSpacePressed,
+                        color: AppTheme.primary,
+                        ledColor: Colors.white,
+                        isLedOn: true,
+                        child: Text(
+                          'READ OUT DATA [Space]',
+                          style: GoogleFonts.shareTechMono(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.displayBg,
+                          ),
                         ),
-                        child: const Text('SHOW ANSWER [Space]'),
                       ),
                     ] else ...[
                       Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton(
+                            child: TactileButton(
+                              height: 48,
                               onPressed: () => _submitAnswer(2),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppTheme.error,
-                                side: const BorderSide(color: AppTheme.error),
-                                minimumSize: const Size(double.infinity, 44),
+                              isPressedExternal: _is1Pressed,
+                              color: AppTheme.surface,
+                              ledColor: AppTheme.error,
+                              isLedOn: true,
+                              child: Text(
+                                'WEAK [1]',
+                                style: GoogleFonts.shareTechMono(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.error,
+                                ),
                               ),
-                              child: const Text('WEAK [1]'),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: ElevatedButton(
+                            child: TactileButton(
+                              height: 48,
                               onPressed: () => _submitAnswer(1),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primary,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(double.infinity, 44),
+                              isPressedExternal: _is2Pressed,
+                              color: AppTheme.primary,
+                              ledColor: AppTheme.success,
+                              isLedOn: true,
+                              child: Text(
+                                'MASTERED [2]',
+                                style: GoogleFonts.shareTechMono(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.displayBg,
+                                ),
                               ),
-                              child: const Text('MASTERED [2]'),
                             ),
                           ),
                         ],
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+                    
+                    // Extra option button: AI Insight (mapped to key 3)
+                    TactileButton(
+                      height: 38,
+                      onPressed: _askAIAboutWord,
+                      isPressedExternal: _is3Pressed,
+                      color: AppTheme.surface,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.flash_on_rounded, size: 12, color: AppTheme.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'AI NUANCE SPECTRUM [3]',
+                            style: GoogleFonts.shareTechMono(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Text(
-                      'Press [Space] to flip card  •  [1] Weak  •  [2] Mastered  •  [3] AI Insight',
-                      style: GoogleFonts.inter(fontSize: 10, color: AppTheme.textMuted),
+                      'SHORTCUTS: [SPACE] FLIP  •  [1] WEAK  •  [2] MASTERED  •  [3] AI INSIGHT',
+                      style: GoogleFonts.shareTechMono(fontSize: 9, color: AppTheme.textMuted),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -464,126 +546,138 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            isEnToJa ? word.spelling : word.meaningJa,
-            style: GoogleFonts.inter(
-              fontSize: 36,
+            isEnToJa ? word.spelling.toUpperCase() : word.meaningJa,
+            style: GoogleFonts.shareTechMono(
+              fontSize: 38,
               fontWeight: FontWeight.bold,
               color: AppTheme.textPrimary,
-              letterSpacing: -1.0,
+              letterSpacing: 1.0,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           if (isEnToJa)
-            IconButton(
-              icon: const Icon(Icons.volume_up_rounded, size: 24, color: AppTheme.textSecondary),
+            TactileButton(
+              width: 130,
+              height: 32,
               onPressed: () => _speak(word.spelling),
-              tooltip: 'Listen pronunciation',
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.volume_up_rounded, size: 12, color: AppTheme.textPrimary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'PLAY AUDIO',
+                    style: GoogleFonts.shareTechMono(fontSize: 10, color: AppTheme.textPrimary),
+                  )
+                ],
+              ),
             ),
         ],
       );
     } else {
       // BACK SIDE
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Column(
-              children: [
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    word.spelling.toUpperCase(),
+                    style: GoogleFonts.shareTechMono(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primary,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    word.meaningJa,
+                    style: GoogleFonts.shareTechMono(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  TactileButton(
+                    width: 120,
+                    height: 28,
+                    onPressed: () => _speak(word.spelling),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.volume_up_rounded, size: 10, color: AppTheme.textPrimary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'PLAY AUDIO',
+                          style: GoogleFonts.shareTechMono(fontSize: 9, color: AppTheme.textPrimary),
+                        )
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Divider(color: AppTheme.borderColor),
+            const SizedBox(height: 12),
+
+            // Contextual examples (Dynamic/AI generated)
+            if (word.customExampleEn != null || word.coreNuance != null) ...[
+              if (word.coreNuance != null && word.coreNuance!.isNotEmpty) ...[
                 Text(
-                  word.spelling,
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
+                  '// NUANCE:',
+                  style: GoogleFonts.shareTechMono(
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textSecondary,
-                    letterSpacing: -0.5,
+                    color: AppTheme.primary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  word.meaningJa,
-                  style: GoogleFonts.inter(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
-                  textAlign: TextAlign.center,
+                  word.coreNuance!,
+                  style: GoogleFonts.shareTechMono(fontSize: 12, color: AppTheme.textPrimary, height: 1.4),
                 ),
-                const SizedBox(height: 12),
-                IconButton(
-                  icon: const Icon(Icons.volume_up_rounded, size: 20, color: AppTheme.textSecondary),
-                  onPressed: () => _speak(word.spelling),
-                  tooltip: 'Listen pronunciation',
-                ),
+                const SizedBox(height: 16),
               ],
-            ),
-          ),
-          const SizedBox(height: 36),
-
-          // Contextual examples (Dynamic/AI generated)
-          if (word.customExampleEn != null || word.coreNuance != null)
-            Container(
-              padding: const EdgeInsets.only(left: 14.0, top: 4.0, bottom: 4.0),
-              decoration: const BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: AppTheme.primary, width: 2.0),
+              if (word.customExampleEn != null) ...[
+                Text(
+                  '// LIVE EXAMPLE:',
+                  style: GoogleFonts.shareTechMono(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (word.coreNuance != null && word.coreNuance!.isNotEmpty) ...[
-                    Text(
-                      'NUANCE',
-                      style: GoogleFonts.inter(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      word.coreNuance!,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary, height: 1.4),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (word.customExampleEn != null) ...[
-                    Text(
-                      'EXAMPLE',
-                      style: GoogleFonts.inter(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      word.customExampleEn!,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.textPrimary,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      word.customExampleJa!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                        height: 1.3,
-                      ),
-                    ),
-                  ]
-                ],
-              ),
-            ),
-        ],
+                const SizedBox(height: 4),
+                Text(
+                  word.customExampleEn!,
+                  style: GoogleFonts.shareTechMono(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textPrimary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  word.customExampleJa!,
+                  style: GoogleFonts.shareTechMono(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ]
+            ],
+          ],
+        ),
       );
     }
   }
@@ -594,36 +688,62 @@ class _CardLearningScreenState extends ConsumerState<CardLearningScreen> {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Session Complete',
-                style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                  letterSpacing: -0.5,
+          child: Container(
+            decoration: AppTheme.displayDecoration(glow: true),
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.success,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.success,
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      )
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Spaced Repetition schedules updated successfully.',
-                style: const TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 12,
+                const SizedBox(height: 16),
+                Text(
+                  'CALIBRATION COMPLETE',
+                  style: GoogleFonts.shareTechMono(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: 1.0,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: 140,
-                child: ElevatedButton(
+                const SizedBox(height: 8),
+                Text(
+                  'SPACED REPETITION QUANTUM STATES SYNCHRONIZED.',
+                  style: GoogleFonts.shareTechMono(
+                    color: AppTheme.textSecondary,
+                    fontSize: 10,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                TactileButton(
+                  width: 140,
+                  height: 40,
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Done'),
-                ),
-              )
-            ],
+                  color: AppTheme.primary,
+                  child: Text(
+                    'DISMISS',
+                    style: GoogleFonts.shareTechMono(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.displayBg,
+                    ),
+                  ),
+                )
+              ],
+            ),
           ),
         ),
       ),

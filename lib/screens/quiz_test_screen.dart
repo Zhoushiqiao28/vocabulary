@@ -28,12 +28,15 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
   bool _hasAnswered = false;
 
   int _score = 0;
-  List<Word> _wrongWords = [];
+  final List<Word> _wrongWords = [];
 
   final FocusNode _keyboardFocusNode = FocusNode();
   Timer? _transitionTimer;
 
   final FlutterTts _flutterTts = FlutterTts();
+
+  // Animating states for physical keyboard buttons
+  int _pressedIndexExternal = -1;
 
   @override
   void initState() {
@@ -156,6 +159,7 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
       _currentOptions = options.toList()..shuffle();
       _selectedOption = null;
       _hasAnswered = false;
+      _pressedIndexExternal = -1;
     });
 
     if (isEnToJa) {
@@ -176,16 +180,13 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
       _hasAnswered = true;
       if (isCorrect) {
         _score++;
-        // Update SRS status under SM-2 (1: Mastered)
         ref.read(wordListProvider.notifier).updateWordStatus(targetWord.id, 1);
       } else {
         _wrongWords.add(targetWord);
-        // Update SRS status under SM-2 (2: Weak)
         ref.read(wordListProvider.notifier).updateWordStatus(targetWord.id, 2);
       }
     });
 
-    // Auto navigate after 1.5s
     _transitionTimer = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) {
         _nextQuestion();
@@ -207,21 +208,31 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
     }
   }
 
+  void _flashKeyAnimation(int index) {
+    setState(() => _pressedIndexExternal = index);
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) setState(() => _pressedIndexExternal = -1);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: AppTheme.background,
-        body: Center(child: SpinKitPulse(color: AppTheme.textSecondary, size: 40)),
+        body: Center(child: SpinKitPulse(color: AppTheme.primary, size: 40)),
       );
     }
 
     if (_quizWords.isEmpty) {
       return Scaffold(
         backgroundColor: AppTheme.background,
-        appBar: AppBar(title: const Text('Quiz Test')),
-        body: const Center(
-          child: Text('No words match your selected configuration.'),
+        appBar: AppBar(title: const Text('RETENTION QUIZ')),
+        body: Center(
+          child: Text(
+            'STATUS: NO WORDS MATCHED CONFIGURATION.',
+            style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary),
+          ),
         ),
       );
     }
@@ -251,6 +262,7 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
           }
 
           if (selectIndex != null && selectIndex < _currentOptions.length) {
+            _flashKeyAnimation(selectIndex);
             _answer(_currentOptions[selectIndex]);
             return KeyEventResult.handled;
           }
@@ -260,9 +272,12 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.background,
         appBar: AppBar(
-          title: Text('QUIZ ASSESSMENT (${_currentIndex + 1}/${_quizWords.length})'),
+          title: Text(
+            'RETENTION_QUIZ // MODULE_${_currentIndex + 1}_OF_${_quizWords.length}',
+            style: GoogleFonts.shareTechMono(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+          ),
           leading: IconButton(
-            icon: const Icon(Icons.close_rounded),
+            icon: const Icon(Icons.close_rounded, size: 16),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -270,84 +285,124 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              LinearProgressIndicator(
-                value: (_currentIndex + 1) / _quizWords.length,
-                backgroundColor: AppTheme.borderColor,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                minHeight: 2,
+              // LED Progress bar segments
+              Row(
+                children: List.generate(20, (i) {
+                  final progress = (_currentIndex + 1) / _quizWords.length;
+                  final isLit = (i / 20.0) < progress;
+                  return Expanded(
+                    child: Container(
+                      height: 4,
+                      margin: const EdgeInsets.only(right: 1.0),
+                      decoration: BoxDecoration(
+                        color: isLit ? AppTheme.primary : AppTheme.borderColor,
+                        boxShadow: isLit
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.primary.withOpacity(0.5),
+                                  blurRadius: 2,
+                                )
+                              ]
+                            : null,
+                      ),
+                    ),
+                  );
+                }),
               ),
               const Spacer(),
 
-              // Question display
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      questionText,
-                      style: GoogleFonts.inter(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                        letterSpacing: -1.0,
+              // VFD Glass window question display
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Container(
+                  height: 180,
+                  decoration: AppTheme.displayDecoration(glow: true),
+                  padding: const EdgeInsets.all(24.0),
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        questionText.toUpperCase(),
+                        style: GoogleFonts.shareTechMono(
+                          fontSize: 34,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    if (isEnToJa) ...[
-                      const SizedBox(height: 12),
-                      IconButton(
-                        icon: const Icon(Icons.volume_up_rounded, size: 24, color: AppTheme.textSecondary),
-                        onPressed: () => _speak(targetWord.spelling),
-                      ),
+                      if (isEnToJa) ...[
+                        const SizedBox(height: 16),
+                        TactileButton(
+                          width: 120,
+                          height: 28,
+                          onPressed: () => _speak(targetWord.spelling),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.volume_up_rounded, size: 12, color: AppTheme.textPrimary),
+                              const SizedBox(width: 4),
+                              Text(
+                                'PLAY AUDIO',
+                                style: GoogleFonts.shareTechMono(fontSize: 9, color: AppTheme.textPrimary),
+                              )
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
               const Spacer(),
 
-              // Answer choices list table
+              // Answer choices tactile keys panel
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                child: Container(
-                  decoration: AppTheme.cardDecoration(),
-                  child: Column(
-                    children: _currentOptions.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final option = entry.value;
-                      final isSelected = _selectedOption == option;
-                      final isCorrectOption = option == (isEnToJa ? targetWord.meaningJa : targetWord.spelling);
+                child: Column(
+                  children: _currentOptions.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final option = entry.value;
+                    final isSelected = _selectedOption == option;
+                    final correctValue = isEnToJa ? targetWord.meaningJa : targetWord.spelling;
+                    final isCorrectOption = option == correctValue;
 
-                      final List<String> labels = ['A', 'B', 'C', 'D'];
-                      
-                      Color optionColor = AppTheme.textPrimary;
-                      FontWeight optionWeight = FontWeight.w500;
+                    final List<String> labels = ['1 / A', '2 / B', '3 / C', '4 / D'];
+                    
+                    Color ledColor = AppTheme.primary;
+                    bool isLedOn = false;
+                    Color btnTextColor = AppTheme.textPrimary;
 
-                      if (_hasAnswered) {
-                        if (isCorrectOption) {
-                          optionColor = AppTheme.success;
-                          optionWeight = FontWeight.bold;
-                        } else if (isSelected) {
-                          optionColor = AppTheme.error;
-                          optionWeight = FontWeight.bold;
-                        } else {
-                          optionColor = AppTheme.textSecondary;
-                        }
+                    if (_hasAnswered) {
+                      if (isCorrectOption) {
+                        ledColor = AppTheme.success;
+                        isLedOn = true;
+                        btnTextColor = AppTheme.success;
+                      } else if (isSelected) {
+                        ledColor = AppTheme.error;
+                        isLedOn = true;
+                        btnTextColor = AppTheme.error;
+                      } else {
+                        btnTextColor = AppTheme.textSecondary;
                       }
+                    }
 
-                      return InkWell(
-                        onTap: () => _answer(option),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                          decoration: BoxDecoration(
-                            border: index < 3
-                                ? const Border(bottom: BorderSide(color: AppTheme.borderColor, width: 0.5))
-                                : null,
-                          ),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12.0),
+                      child: TactileButton(
+                        height: 52,
+                        onPressed: () => _answer(option),
+                        isPressedExternal: _pressedIndexExternal == index,
+                        ledColor: ledColor,
+                        isLedOn: isLedOn,
+                        color: isSelected ? AppTheme.hover : AppTheme.surface,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
                           child: Row(
                             children: [
                               Text(
-                                labels[index],
-                                style: GoogleFonts.inter(
+                                '[ ${labels[index]} ]',
+                                style: GoogleFonts.shareTechMono(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   color: isSelected ? AppTheme.primary : AppTheme.textMuted,
@@ -356,27 +411,33 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Text(
-                                  option,
-                                  style: TextStyle(
+                                  option.toUpperCase(),
+                                  style: GoogleFonts.shareTechMono(
                                     fontSize: 13,
-                                    fontWeight: optionWeight,
-                                    color: optionColor,
+                                    fontWeight: FontWeight.bold,
+                                    color: btnTextColor,
                                   ),
                                 ),
                               ),
                               if (_hasAnswered && isCorrectOption)
-                                const Icon(Icons.check_circle_outline_rounded, color: AppTheme.success, size: 16)
+                                const Icon(Icons.check_circle_outline_rounded, color: AppTheme.success, size: 14)
                               else if (_hasAnswered && isSelected)
-                                const Icon(Icons.cancel_outlined, color: AppTheme.error, size: 16)
+                                const Icon(Icons.cancel_outlined, color: AppTheme.error, size: 14)
                             ],
                           ),
                         ),
-                      );
-                    }).toList(),
-                  ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
+              Text(
+                'SHORTCUTS: PRESS KEYS [1] [2] [3] [4] OR [A] [B] [C] [D] ON PHYSICAL KEYBOARD',
+                style: GoogleFonts.shareTechMono(fontSize: 9, color: AppTheme.textMuted),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
             ],
           ),
         ),
@@ -397,8 +458,8 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
             children: [
               const Spacer(),
               Text(
-                'ASSESSMENT COMPLETE',
-                style: GoogleFonts.inter(
+                'ASSESSMENT QUANTUM STATUS',
+                style: GoogleFonts.shareTechMono(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textSecondary,
@@ -408,21 +469,21 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                '$_score / ${_quizWords.length}',
-                style: GoogleFonts.inter(
-                  fontSize: 48,
-                  fontWeight: FontWeight.w800,
+                'SCORE: ${_score.toString().padLeft(2, '0')} / ${_quizWords.length.toString().padLeft(2, '0')}',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
                   color: AppTheme.primary,
-                  letterSpacing: -1.0,
+                  letterSpacing: 1.0,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               
               if (!allCorrect) ...[
                 Text(
-                  'REVIEW WEAK WORDS',
-                  style: GoogleFonts.inter(
+                  '// WEAK CHANNELS DETECTED:',
+                  style: GoogleFonts.shareTechMono(
                     color: AppTheme.error,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -433,28 +494,26 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
                 Expanded(
                   flex: 3,
                   child: Container(
-                    decoration: AppTheme.cardDecoration(),
+                    decoration: AppTheme.displayDecoration(glow: false),
                     child: ListView.builder(
                       itemCount: _wrongWords.length,
                       itemBuilder: (context, index) {
                         final word = _wrongWords[index];
                         return Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                          decoration: BoxDecoration(
-                            border: index < _wrongWords.length - 1
-                                ? const Border(bottom: BorderSide(color: AppTheme.borderColor, width: 0.5))
-                                : null,
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                          decoration: const BoxDecoration(
+                            border: Border(bottom: BorderSide(color: AppTheme.borderColor, width: 0.5)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                word.spelling,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                                word.spelling.toUpperCase(),
+                                style: GoogleFonts.shareTechMono(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                               ),
                               Text(
                                 word.meaningJa,
-                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                                style: GoogleFonts.shareTechMono(fontSize: 11, color: AppTheme.textSecondary),
                               ),
                             ],
                           ),
@@ -465,18 +524,31 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
                 ),
               ] else ...[
                 const Spacer(),
-                const Center(
+                Center(
                   child: Column(
                     children: [
-                      Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 48),
-                      SizedBox(height: 12),
-                      Text(
-                        'PERFECT SCORE',
-                        style: TextStyle(
+                      Container(
+                        width: 14,
+                        height: 14,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
                           color: AppTheme.success,
-                          fontSize: 16,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.success,
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            )
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'CALIBRATION PERFECT // ZERO_ERRORS',
+                        style: GoogleFonts.shareTechMono(
+                          color: AppTheme.success,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 1.0,
                         ),
                       ),
                     ],
@@ -485,9 +557,17 @@ class _QuizTestScreenState extends ConsumerState<QuizTestScreen> {
                 const Spacer(),
               ],
               const Spacer(),
-              ElevatedButton(
+              TactileButton(
+                height: 46,
                 onPressed: () => Navigator.pop(context),
-                child: const Text('DONE'),
+                color: AppTheme.primary,
+                child: Text(
+                  'DISMISS',
+                  style: GoogleFonts.shareTechMono(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.displayBg,
+                  ),
+                ),
               ),
             ],
           ),

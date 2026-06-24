@@ -1,76 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// v5.0 Design System — "Swiss Minimalist Workspace"
+/// v6.0 Design System — "Tactile Hardware Console" (Teenage Engineering Style)
 /// 
-/// Design philosophy: Stripe × Vercel.
-/// Focuses on structural grids, Inter typography, slate grays, and crisp accents.
+/// Design philosophy:
+/// - Metal Dark Chassis (Background: 0xFF0F0F11, Module surface: 0xFF16161A)
+/// - VFD Glass Screens (Background: 0xFF070708)
+/// - LED indicators (Cyan: 0xFF00D2FF, Green: 0xFF00FF87, Red: 0xFFFF3B30, Yellow: 0xFFFFCC00)
+/// - Monospace readout fonts (Share Tech Mono, Space Mono)
 class AppTheme {
-  // ─── Background Scale ───
-  static const Color background = Color(0xFF121214);
-  static const Color surface = Color(0xFF1C1C1F);
-  static const Color elevated = Color(0xFF26262B);
-  static const Color hover = Color(0xFF2E2E35);
+  // ─── Chassis / Metal Panel Scale ───
+  static const Color background = Color(0xFF0F0F11); // Dark aluminum chassis
+  static const Color surface = Color(0xFF16161A);    // Module panel plate
+  static const Color elevated = Color(0xFF1E1E24);   // Slightly elevated module
+  static const Color hover = Color(0xFF23232A);      // Hover highlight
+  static const Color displayBg = Color(0xFF070708);  // VFD / LCD Glass screen backdrop
 
-  // ─── Primary (Intelligent Blue) ───
-  static const Color primary = Color(0xFF3569FD);
-
-  // ─── Semantic Colors (Muted, professional) ───
-  static const Color success = Color(0xFF10B981);   // Mastered
-  static const Color error = Color(0xFFEF4444);     // Weak
-  static const Color warning = Color(0xFFF59E0B);   // Favorite / Streak
-  static const Color info = Color(0xFF3B82F6);      // Info
-
-  // ─── Accent ───
-  static const Color accent = Color(0xFF3569FD);
-
-  // ─── Text Scale ───
-  static const Color textPrimary = Color(0xFFECECED);
-  static const Color textSecondary = Color(0xFF8E8E93);
-  static const Color textMuted = Color(0xFF4A4A4F);
-
-  // ─── Border ───
-  static const double borderSubtleOpacity = 0.06;
-  static const double borderMediumOpacity = 0.12;
-  static const Color borderColor = Color(0xFF2E2E33);
-
-  // ─── Backwards compatibility aliases ───
+  // ─── LED / Active Light Scale ───
+  static const Color primary = Color(0xFF00D2FF);    // VFD Cyan
+  static const Color success = Color(0xFF00FF87);    // LED Green (Mastered)
+  static const Color error = Color(0xFFFF3B30);      // LED Red (Weak)
+  static const Color warning = Color(0xFFFFCC00);    // LED Yellow (Favorite / Streak)
+  static const Color info = Color(0xFF00D2FF);       // LED Cyan (Info)
   static const Color secondary = info;
-  static const Color cardBg = surface;
 
-  // ─── Border Radius Tokens (Rigid, professional) ───
-  static const double radiusSm = 4.0;
-  static const double radiusMd = 6.0;
-  static const double radiusLg = 8.0;
+  // ─── Text / Monospace Readout Scale ───
+  static const Color textPrimary = Color(0xFFE2E2E7);
+  static const Color textSecondary = Color(0xFF8E8E93);
+  static const Color textMuted = Color(0xFF48484A);
+
+  // ─── Engraved Dividers ───
+  static const Color borderColor = Color(0xFF26262B); // Engraved groove line
+  static const Color borderGlow = Color(0x1F00D2FF);  // VFD glow leakage
+  static const double borderSubtleOpacity = 0.08;
+  static const double borderMediumOpacity = 0.15;
+
+  // ─── Tactile Sharpness Radius ───
+  static const double radiusSm = 2.0;
+  static const double radiusMd = 3.0;
+  static const double radiusLg = 4.0;
   static const double radiusFull = 9999.0;
 
   // ─── Opacity Tokens ───
   static const double opSubtle = 0.04;
   static const double opLight = 0.08;
-  static const double opMedium = 0.15;
-  static const double opStrong = 0.30;
-  static const double opBold = 0.50;
+  static const double opMedium = 0.18;
+  static const double opStrong = 0.35;
+  static const double opBold = 0.60;
 
-  // ─── Shadow Presets (Soft, professional) ───
-  static List<BoxShadow> get shadowCard => [
-    BoxShadow(
-      color: Colors.black.withOpacity(0.15),
-      blurRadius: 4,
-      offset: const Offset(0, 2),
-    ),
-  ];
+  // ─── Chassis Engraving Border ───
+  static Border get slitBorder => Border.all(
+    color: borderColor,
+    width: 1.0,
+  );
 
-  static List<BoxShadow> get shadowElevated => [
-    BoxShadow(
-      color: Colors.black.withOpacity(0.30),
-      blurRadius: 12,
-      offset: const Offset(0, 4),
-    ),
-  ];
-
-  // ─── Decoration Factories ───
-
-  /// Standard panel decoration
   static BoxDecoration cardDecoration({
     Color? color,
     double radius = radiusMd,
@@ -83,11 +66,9 @@ class AppTheme {
         color: borderColor,
         width: 1.0,
       ),
-      boxShadow: withShadow ? shadowCard : null,
     );
   }
 
-  /// Elevated panel decoration
   static BoxDecoration elevatedDecoration({
     double radius = radiusLg,
   }) {
@@ -98,11 +79,30 @@ class AppTheme {
         color: borderColor,
         width: 1.0,
       ),
-      boxShadow: shadowElevated,
     );
   }
 
-  /// Chip / Badge decoration
+  static BoxDecoration displayDecoration({
+    double radius = radiusMd,
+    bool glow = false,
+  }) {
+    return BoxDecoration(
+      color: displayBg,
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(
+        color: glow ? primary.withOpacity(0.3) : borderColor,
+        width: 1.0,
+      ),
+      boxShadow: glow ? [
+        BoxShadow(
+          color: primary.withOpacity(0.08),
+          blurRadius: 8,
+          spreadRadius: 1,
+        )
+      ] : null,
+    );
+  }
+
   static BoxDecoration chipDecoration({
     required Color color,
     bool selected = false,
@@ -117,9 +117,9 @@ class AppTheme {
     );
   }
 
-  // ─── Theme Data ───
+  // ─── Theme Data (Tactile Monospace VFD Theme) ───
   static ThemeData get darkTheme {
-    final baseTextTheme = GoogleFonts.interTextTheme(
+    final baseTextTheme = GoogleFonts.shareTechMonoTextTheme(
       const TextTheme(
         displayLarge: TextStyle(
           fontSize: 32, fontWeight: FontWeight.bold,
@@ -134,11 +134,11 @@ class AppTheme {
           color: textPrimary,
         ),
         bodyLarge: TextStyle(
-          fontSize: 13, fontWeight: FontWeight.w400,
-          color: textPrimary, height: 1.5,
+          fontSize: 14, fontWeight: FontWeight.w400,
+          color: textPrimary, height: 1.4,
         ),
         bodyMedium: TextStyle(
-          fontSize: 13, color: textSecondary, height: 1.4,
+          fontSize: 13, color: textSecondary, height: 1.3,
         ),
         labelSmall: TextStyle(
           fontSize: 10, fontWeight: FontWeight.w600,
@@ -174,60 +174,29 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
         iconTheme: const IconThemeData(color: textPrimary, size: 20),
-        titleTextStyle: GoogleFonts.inter(
-          fontSize: 15,
+        titleTextStyle: GoogleFonts.shareTechMono(
+          fontSize: 16,
           fontWeight: FontWeight.w600,
           color: textPrimary,
-          letterSpacing: -0.2,
-        ),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          minimumSize: const Size(double.infinity, 42),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
-          ),
-          textStyle: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: textPrimary,
-          side: const BorderSide(color: borderColor),
-          minimumSize: const Size(double.infinity, 42),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
-          ),
-          textStyle: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
-          ),
+          letterSpacing: 0.5,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surface,
+        fillColor: displayBg,
         hintStyle: const TextStyle(color: textMuted),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
+          borderRadius: BorderRadius.circular(radiusSm),
           borderSide: const BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
+          borderRadius: BorderRadius.circular(radiusSm),
           borderSide: const BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: primary, width: 1.5),
+          borderRadius: BorderRadius.circular(radiusSm),
+          borderSide: const BorderSide(color: primary, width: 1.0),
         ),
       ),
       chipTheme: ChipThemeData(
@@ -237,9 +206,152 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusSm),
           side: const BorderSide(color: borderColor),
         ),
-        labelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500),
+        labelStyle: GoogleFonts.shareTechMono(fontSize: 11, fontWeight: FontWeight.w500),
       ),
       dividerColor: borderColor,
+    );
+  }
+}
+
+/// A custom widget representing a tactile mechanical flat key button.
+/// Features physically offset depth changes on tap, and an optional LED dot indicator.
+class TactileButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onPressed;
+  final Color? color;
+  final Color? ledColor;
+  final bool isLedOn;
+  final double height;
+  final double? width;
+  final bool isPressedExternal; // Trigger state externally (e.g. keyboard shortcuts)
+
+  const TactileButton({
+    Key? key,
+    required this.child,
+    this.onPressed,
+    this.color,
+    this.ledColor,
+    this.isLedOn = false,
+    this.height = 42.0,
+    this.width,
+    this.isPressedExternal = false,
+  }) : super(key: key);
+
+  @override
+  State<TactileButton> createState() => _TactileButtonState();
+}
+
+class _TactileButtonState extends State<TactileButton> {
+  bool _isPressedInternal = false;
+
+  bool get _isCurrentlyPressed => widget.isPressedExternal || _isPressedInternal;
+
+  void _handleTapDown(TapDownDetails details) {
+    if (widget.onPressed != null) {
+      setState(() => _isPressedInternal = true);
+    }
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    if (widget.onPressed != null) {
+      setState(() => _isPressedInternal = false);
+      widget.onPressed!();
+    }
+  }
+
+  void _handleTapCancel() {
+    setState(() => _isPressedInternal = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColor = widget.color ?? AppTheme.surface;
+    final isEnabled = widget.onPressed != null;
+
+    return GestureDetector(
+      onTapDown: isEnabled ? _handleTapDown : null,
+      onTapUp: isEnabled ? _handleTapUp : null,
+      onTapCancel: isEnabled ? _handleTapCancel : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 60),
+        curve: Curves.easeOut,
+        height: widget.height,
+        width: widget.width,
+        margin: EdgeInsets.only(
+          top: _isCurrentlyPressed ? 2.0 : 0.0,
+          bottom: _isCurrentlyPressed ? 0.0 : 2.0,
+        ),
+        decoration: BoxDecoration(
+          color: isEnabled ? themeColor : themeColor.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          border: Border.all(
+            color: AppTheme.borderColor,
+            width: 1.0,
+          ),
+          boxShadow: _isCurrentlyPressed
+              ? null
+              : [
+                  // Flat physical bottom depth border
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.5),
+                    offset: const Offset(0, 2.0),
+                    blurRadius: 0,
+                  ),
+                ],
+        ),
+        alignment: Alignment.center,
+        child: Stack(
+          children: [
+            Align(
+              alignment: Alignment.center,
+              child: widget.child,
+            ),
+            if (widget.ledColor != null)
+              PositionPointLed(
+                color: widget.ledColor!,
+                isOn: widget.isLedOn,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A tiny point LED indicator inside a TactileButton
+class PositionPointLed extends StatelessWidget {
+  final Color color;
+  final bool isOn;
+
+  const PositionPointLed({
+    Key? key,
+    required this.color,
+    required this.isOn,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 6,
+      left: 6,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 5,
+        height: 5,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isOn ? color : color.withOpacity(0.15),
+          boxShadow: isOn
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.6),
+                    blurRadius: 3,
+                    spreadRadius: 0.5,
+                  ),
+                ]
+              : null,
+        ),
+      ),
     );
   }
 }

@@ -26,7 +26,11 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
       child: Container(
         width: double.infinity,
         constraints: const BoxConstraints(maxWidth: 360),
-        decoration: AppTheme.elevatedDecoration(),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          border: Border.all(color: AppTheme.borderColor),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        ),
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -37,67 +41,72 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'LEARNING LOG',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
+                  'MATRIX_LED_CALENDAR // DICTIONARY_LOG',
+                  style: GoogleFonts.shareTechMono(
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                    letterSpacing: -0.2,
+                    color: AppTheme.primary,
+                    letterSpacing: 0.5,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 18),
+                  icon: const Icon(Icons.close_rounded, size: 16, color: AppTheme.textSecondary),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
             ),
+            const Divider(color: AppTheme.borderColor),
             const SizedBox(height: 12),
 
-            // Month Selector
+            // Month Selector (styled as tactile toggle block)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left_rounded, size: 20),
+                TactileButton(
+                  width: 38,
+                  height: 32,
                   onPressed: () {
                     setState(() {
                       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
                     });
                   },
+                  child: const Icon(Icons.chevron_left_rounded, size: 16, color: AppTheme.textPrimary),
                 ),
-                Text(
-                  '${_currentMonth.year} / ${_currentMonth.month.toString().padLeft(2, '0')}',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  decoration: AppTheme.displayDecoration(glow: false),
+                  child: Text(
+                    '${_currentMonth.year} // ${_currentMonth.month.toString().padLeft(2, '0')}',
+                    style: GoogleFonts.shareTechMono(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                TactileButton(
+                  width: 38,
+                  height: 32,
                   onPressed: () {
                     setState(() {
                       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
                     });
                   },
+                  child: const Icon(Icons.chevron_right_rounded, size: 16, color: AppTheme.textPrimary),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Calendar Grid
+            // Calendar Grid display
             _buildCalendarGrid(words, profile.dailyTarget),
             
             const SizedBox(height: 20),
 
-            // Summary Bottom
+            // Summary Bottom (VFD streak details)
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                border: Border.all(color: AppTheme.borderColor),
-              ),
+              decoration: AppTheme.displayDecoration(glow: false),
               child: Row(
                 children: [
                   Expanded(
@@ -105,8 +114,8 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'CONTINUITY STREAK',
-                          style: GoogleFonts.inter(
+                          'CONTINUITY STREAK READOUT',
+                          style: GoogleFonts.shareTechMono(
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.textSecondary,
@@ -115,9 +124,9 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${profile.streakDays} DAYS ACTIVE',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
+                          'STREAK: ${profile.streakDays.toString().padLeft(2, '0')} DAYS ACTIVE',
+                          style: GoogleFonts.shareTechMono(
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.warning,
                           ),
@@ -166,7 +175,7 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
             child: Center(
               child: Text(
                 day,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.shareTechMono(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textMuted,
@@ -213,25 +222,33 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
   }
 
   Widget _buildDayCell(int day, int count, int dailyTarget, bool isToday) {
-    Color bgColor = Colors.transparent;
+    Color ledColor = AppTheme.success.withOpacity(0.04);
     Color textColor = AppTheme.textSecondary;
     Border? border;
+    List<BoxShadow>? shadows;
     
     if (count > 0) {
       if (count >= dailyTarget) {
-        bgColor = AppTheme.success;
-        textColor = Colors.white;
+        ledColor = AppTheme.success;
+        textColor = AppTheme.displayBg;
+        shadows = [
+          BoxShadow(
+            color: AppTheme.success.withOpacity(0.6),
+            blurRadius: 4,
+            spreadRadius: 0.5,
+          )
+        ];
       } else if (count >= dailyTarget / 2) {
-        bgColor = AppTheme.success.withOpacity(0.4);
+        ledColor = AppTheme.success.withOpacity(0.5);
         textColor = AppTheme.textPrimary;
       } else {
-        bgColor = AppTheme.success.withOpacity(0.12);
+        ledColor = AppTheme.success.withOpacity(0.2);
         textColor = AppTheme.success;
       }
     }
 
     if (isToday) {
-      border = Border.all(color: AppTheme.primary, width: 1.2);
+      border = Border.all(color: AppTheme.primary, width: 1.0);
       if (count == 0) {
         textColor = AppTheme.primary;
       }
@@ -241,15 +258,16 @@ class _LearningCalendarDialogState extends ConsumerState<LearningCalendarDialog>
       width: 28,
       height: 28,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: ledColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: border,
+        boxShadow: shadows,
       ),
       child: Center(
         child: Text(
-          day.toString(),
-          style: GoogleFonts.inter(
-            fontSize: 11,
+          day.toString().padLeft(2, '0'),
+          style: GoogleFonts.shareTechMono(
+            fontSize: 10,
             fontWeight: isToday || count > 0 ? FontWeight.bold : FontWeight.normal,
             color: textColor,
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'dart:math';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../theme/app_theme.dart';
@@ -82,8 +83,8 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
         title: const Text('RADIO AI DIALOGUE'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_sweep_rounded),
-            tooltip: 'Clear history',
+            icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+            tooltip: 'Reset transceivers',
             onPressed: () {
               ref.read(aiVocaChatProvider.notifier).clearHistory();
             },
@@ -93,6 +94,10 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Oscilloscope screen / wave display
+            _buildOscilloscopePanel(),
+            const Divider(height: 1, thickness: 1),
+
             // Target Words header bar
             if (_targetWords.isNotEmpty) _buildTargetWordsBar(),
             const Divider(height: 1, thickness: 1),
@@ -124,30 +129,83 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
     );
   }
 
+  Widget _buildOscilloscopePanel() {
+    return Container(
+      height: 48,
+      color: AppTheme.displayBg,
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppTheme.success,
+                  boxShadow: [
+                    BoxShadow(color: AppTheme.success, blurRadius: 4),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'LINK ACTIVE // CH_443.2HZ',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+              child: CustomPaint(
+                painter: OscilloscopePainter(),
+                child: Container(),
+              ),
+            ),
+          ),
+          Text(
+            'RX/TX_LOG',
+            style: GoogleFonts.shareTechMono(
+              fontSize: 10,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTargetWordsBar() {
     final today = DateTime.now();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       color: AppTheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'TARGET PRACTICE VOCABULARY',
-            style: GoogleFonts.inter(
+            'TARGET PRACTICE CHANNEL CHIPS',
+            style: GoogleFonts.shareTechMono(
               fontSize: 9,
               fontWeight: FontWeight.bold,
               color: AppTheme.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           SizedBox(
-            height: 28,
+            height: 24,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _targetWords.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              separatorBuilder: (context, index) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
                 final word = _targetWords[index];
                 
@@ -156,36 +214,49 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
 
                 if (word.status == 2) {
                   chipColor = AppTheme.error;
-                  label = 'Weak';
+                  label = 'WEAK';
                 } else if (word.reviewedAt != null && 
                            word.reviewedAt!.year == today.year &&
                            word.reviewedAt!.month == today.month &&
                            word.reviewedAt!.day == today.day) {
                   chipColor = AppTheme.success;
-                  label = 'Today';
+                  label = 'TODAY';
                 } else if (word.status == 0) {
                   chipColor = AppTheme.info;
-                  label = 'New';
+                  label = 'NEW';
                 } else {
                   chipColor = AppTheme.warning;
-                  label = 'Review';
+                  label = 'REVIEW';
                 }
 
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    border: Border.all(color: chipColor.withOpacity(0.3)),
-                    color: chipColor.withOpacity(0.06),
+                    border: Border.all(color: AppTheme.borderColor),
+                    color: AppTheme.displayBg,
                     borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Status LED dot
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: chipColor,
+                          boxShadow: [
+                            BoxShadow(color: chipColor, blurRadius: 2),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
                       Text(
-                        word.spelling,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
+                        word.spelling.toUpperCase(),
+                        style: GoogleFonts.shareTechMono(
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
                         ),
@@ -193,17 +264,17 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
                       const SizedBox(width: 6),
                       Text(
                         word.meaningJa,
-                        style: const TextStyle(
-                          fontSize: 11,
+                        style: GoogleFonts.shareTechMono(
+                          fontSize: 9,
                           color: AppTheme.textSecondary,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         label,
-                        style: TextStyle(
+                        style: GoogleFonts.shareTechMono(
                           color: chipColor,
-                          fontSize: 9,
+                          fontSize: 8,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -225,21 +296,20 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.chat_bubble_outline_rounded, color: AppTheme.textMuted, size: 48),
-            const SizedBox(height: 16),
+            const Icon(Icons.radio_rounded, color: AppTheme.textMuted, size: 36),
+            const SizedBox(height: 12),
             Text(
-              'No messages yet',
-              style: GoogleFonts.inter(
-                fontSize: 14,
+              'SIGNAL EMPTY // NO DIALOG RECORDED',
+              style: GoogleFonts.shareTechMono(
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textPrimary,
-                letterSpacing: -0.2,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Start typing below to initiate your practice dialogue.',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            Text(
+              'SEND A TRANSMISSION TO INITIALIZE DIALOG SYSTEM.',
+              style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 10),
               textAlign: TextAlign.center,
             ),
           ],
@@ -251,7 +321,7 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
   Widget _buildMessageRow(ChatMessage msg, int index, bool isUser) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -269,11 +339,11 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
             children: [
               if (!isUser) ...[
                 Text(
-                  'AI',
-                  style: GoogleFonts.inter(
+                  '[ RECEIVE // RX ]',
+                  style: GoogleFonts.shareTechMono(
                     color: AppTheme.primary,
                     fontWeight: FontWeight.bold,
-                    fontSize: 11,
+                    fontSize: 10,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -281,21 +351,21 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
               Flexible(
                 child: Text(
                   msg.text,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.shareTechMono(
                     color: isUser ? AppTheme.textSecondary : AppTheme.textPrimary,
                     fontSize: 13,
-                    height: 1.5,
+                    height: 1.4,
                   ),
                 ),
               ),
               if (isUser) ...[
                 const SizedBox(width: 12),
                 Text(
-                  'YOU',
-                  style: GoogleFonts.inter(
-                    color: AppTheme.textMuted,
+                  '[ TRANSMIT // TX ]',
+                  style: GoogleFonts.shareTechMono(
+                    color: AppTheme.warning,
                     fontWeight: FontWeight.bold,
-                    fontSize: 11,
+                    fontSize: 10,
                   ),
                 ),
               ],
@@ -303,7 +373,7 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
           ),
           
           if (!isUser && msg.needsCorrection && msg.correctedText != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             _buildCorrectionBox(msg, index),
           ],
         ],
@@ -316,7 +386,7 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
     
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.displayBg,
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: Border.all(color: AppTheme.borderColor),
       ),
@@ -333,20 +403,20 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
               });
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.spellcheck_rounded, color: AppTheme.success, size: 14),
+                      const Icon(Icons.build_circle_rounded, color: AppTheme.warning, size: 12),
                       const SizedBox(width: 8),
                       Text(
-                        'GRAMMAR ADVICE AVAILABLE',
-                        style: GoogleFonts.inter(
+                        'DIAGNOSTIC ADVISE // GRAMMAR WARNING',
+                        style: GoogleFonts.shareTechMono(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.success,
+                          color: AppTheme.warning,
                         ),
                       ),
                     ],
@@ -354,7 +424,7 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
                   Icon(
                     isExpanded ? Icons.remove_rounded : Icons.add_rounded,
                     color: AppTheme.textSecondary,
-                    size: 16,
+                    size: 14,
                   )
                 ],
               ),
@@ -364,38 +434,38 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
             secondChild: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              color: AppTheme.background.withOpacity(0.3),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              color: AppTheme.surface.withOpacity(0.5),
               width: double.infinity,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'RECOMENDED SYNTAX:',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
+                  Text(
+                    '// CORRECTED SYNTAX:',
+                    style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     msg.correctedText!,
-                    style: GoogleFonts.inter(color: AppTheme.success, fontSize: 13, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.shareTechMono(color: AppTheme.success, fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   if (msg.explanation != null && msg.explanation!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    const Text(
-                      'EXPLANATION:',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
+                    const SizedBox(height: 10),
+                    Text(
+                      '// ANALYTICAL LOG:',
+                      style: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       msg.explanation!,
-                      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, height: 1.4),
+                      style: GoogleFonts.shareTechMono(color: AppTheme.textPrimary, fontSize: 11, height: 1.4),
                     ),
                   ],
                 ],
               ),
             ),
             crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 150),
           )
         ],
       ),
@@ -404,19 +474,19 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
 
   Widget _buildAILoadingIndicator() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Text(
-            'AI',
-            style: GoogleFonts.inter(
+            '[ RECEIVE // RX ]',
+            style: GoogleFonts.shareTechMono(
               color: AppTheme.primary,
               fontWeight: FontWeight.bold,
-              fontSize: 11,
+              fontSize: 10,
             ),
           ),
           const SizedBox(width: 12),
-          const SpinKitThreeBounce(color: AppTheme.textSecondary, size: 14),
+          const SpinKitThreeBounce(color: AppTheme.textSecondary, size: 10),
         ],
       ),
     );
@@ -424,8 +494,8 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
 
   Widget _buildInputBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-      color: AppTheme.background,
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      color: AppTheme.surface,
       child: Row(
         children: [
           Expanded(
@@ -433,20 +503,65 @@ class _ChatTestScreenState extends ConsumerState<ChatTestScreen> {
               controller: _inputController,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
-              style: const TextStyle(fontSize: 13),
-              decoration: const InputDecoration(
-                hintText: 'Type practice sentence...',
-                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              style: GoogleFonts.shareTechMono(fontSize: 13, color: AppTheme.textPrimary),
+              decoration: InputDecoration(
+                prefixText: 'TX_DATA > ',
+                prefixStyle: GoogleFonts.shareTechMono(color: AppTheme.textSecondary, fontSize: 13),
+                hintText: 'TYPE PRACTICE TRANSLATION...',
+                hintStyle: GoogleFonts.shareTechMono(color: AppTheme.textMuted, fontSize: 13),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                fillColor: AppTheme.displayBg,
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          IconButton(
-            icon: const Icon(Icons.send_rounded, color: AppTheme.primary),
+          const SizedBox(width: 8),
+          TactileButton(
+            width: 70,
+            height: 38,
             onPressed: _send,
+            color: AppTheme.primary,
+            child: Text(
+              'SEND',
+              style: GoogleFonts.shareTechMono(
+                fontWeight: FontWeight.bold,
+                color: AppTheme.displayBg,
+                fontSize: 11,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+// draws a high-frequency sine-wave/noise monitor to look like analog oscilloscope
+class OscilloscopePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppTheme.primary.withOpacity(0.5)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    final double midY = size.height / 2;
+    final int points = 80;
+    final double stepX = size.width / points;
+
+    final random = Random();
+    path.moveTo(0, midY);
+    for (int i = 1; i <= points; i++) {
+      final double x = i * stepX;
+      // High frequency wave combined with noise spikes
+      final double wave1 = sin(i * 0.6) * (size.height * 0.25);
+      final double wave2 = cos(i * 0.15) * (size.height * 0.15);
+      final double noise = (random.nextDouble() - 0.5) * (size.height * 0.2);
+      path.lineTo(x, midY + wave1 + wave2 + noise);
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
